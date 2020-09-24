@@ -5,7 +5,7 @@ Tiberian Dawn Cheat Mod that provides multiple cheat functionality:
 1.  No damage mode (CTRL+ALT+N)
     - Turns off damage to player units
     - Sets infantry to uncrushable
-    - Does a one-time reset of health for all player buildings and units (for scenarios that start with damaged units or buildings)
+    - Does a one-time reset of health for all player buildings and units when enabled (for scenarios that start with damaged units or buildings)
 
 2.  Unlock build options (CTRL+ALT+B)
     - Show all build options for the player's tech tree.
