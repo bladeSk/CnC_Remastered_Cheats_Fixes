@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/bin/Win32
+/CnCTDRAMapEditor/obj
+/REDALERT/Win32/Release
+/REDALERT/RedAlert.vcxproj.user
+/TIBERIANDAWN/Win32/Release
+/TIBERIANDAWN/TiberianDawn.vcxproj.user
