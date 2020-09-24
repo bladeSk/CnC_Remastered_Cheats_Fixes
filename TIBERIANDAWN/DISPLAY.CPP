@@ -1632,7 +1632,7 @@ void DisplayClass::Refresh_Cells(CELL cell, short const *list)
  *   04/30/1994 JLB : Converted to member function.                                            *
  *   03/06/2019  ST : Added house parameter so we can do this per player                       *
  *=============================================================================================*/
-int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house)
+int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house, bool ignoreMod)
 {
     if (house == NULL) {
         return -1;
@@ -1652,7 +1652,7 @@ int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house)
     if ((unsigned)(Cell_Y(cell)-1) >= MAP_CELL_H-2) return(-2);		// Changed > to >= per Red Alert to fix out of bounds crash. ST - 3/25/2020 11:02PM
 
     cellptr = &(*this)[cell];
-    if (!cellptr->Is_Mapped(house)) {
+    if (!cellptr->Is_Mapped(house, ignoreMod)) {
 
         /*
         **	Check the cardinal directions first. This will either result
@@ -1660,13 +1660,13 @@ int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house)
         */
         index = 0;
         cellptr--;
-        if (cellptr->Is_Mapped(house)) index |= 0x08;
+        if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x08;
         cellptr += MAP_CELL_W+1;
-        if (cellptr->Is_Mapped(house)) index |= 0x04;
+        if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x04;
         cellptr -= MAP_CELL_W-1;
-        if (cellptr->Is_Mapped(house)) index |= 0x02;
+        if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x02;
         cellptr -= MAP_CELL_W+1;
-        if (cellptr->Is_Mapped(house)) index |= 0x01;
+        if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x01;
         value = CardShadow[index];
 
         /*
@@ -1676,13 +1676,13 @@ int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house)
         if (value == -2) {
             index = 0;
             cellptr--;
-            if (cellptr->Is_Mapped(house)) index |= 0x08;
+            if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x08;
             cellptr += MAP_CELL_W*2;
-            if (cellptr->Is_Mapped(house)) index |= 0x04;
+            if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x04;
             cellptr += 2;
-            if (cellptr->Is_Mapped(house)) index |= 0x02;
+            if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x02;
             cellptr -= MAP_CELL_W*2;
-            if (cellptr->Is_Mapped(house)) index |= 0x01;
+            if (cellptr->Is_Mapped(house, ignoreMod)) index |= 0x01;
             value = DiagShadow[index];
         }
 
@@ -1826,7 +1826,7 @@ bool DisplayClass::Map_Cell(CELL cell, HouseClass * house, bool and_for_allies)
     **	Don't bother remapping this cell if it is already mapped.
     */
     //if ((*this)[cell].IsMapped) {
-    if ((*this)[cell].Is_Mapped(house)) {		// Check by player. ST - 3/6/2019 10:28AM
+    if ((*this)[cell].Is_Mapped(house, true)) {		// Check by player. ST - 3/6/2019 10:28AM
         return(false);
     }
 
@@ -1865,8 +1865,8 @@ bool DisplayClass::Map_Cell(CELL cell, HouseClass * house, bool and_for_allies)
         xdiff = ABS(xdiff);
         if (xdiff > 1) continue;
 
-        if (c != cell && !(*this)[c].Is_Mapped(house)) {		// Check by player. ST - 3/6/2019 10:28AM
-            shadow = Cell_Shadow(c, house);
+        if (c != cell && !(*this)[c].Is_Mapped(house, true)) {		// Check by player. ST - 3/6/2019 10:28AM
+            shadow = Cell_Shadow(c, house, true);
 
             /*
             **	Either map the cell or mark it to be refreshed. It
