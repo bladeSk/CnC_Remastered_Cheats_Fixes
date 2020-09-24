@@ -46,6 +46,10 @@ Tiberian Dawn Cheat Mod that provides multiple cheat functionality:
     - Boosting will cap at 50,000 units, but does not stop player from generating more power afterwards.
 
 
-Based on work done by Terra_Ex (https://steamcommunity.com/sharedfiles/filedetails/?id=2124470373), HC|Brainzzz (https://steamcommunity.com/sharedfiles/filedetails/?id=2122827579) and  Afevis Solmunko (https://steamcommunity.com/sharedfiles/filedetails/?id=2123463940).
+
+Based on work done by:
+    - Terra_Ex - https://steamcommunity.com/sharedfiles/filedetails/?id=2124470373
+    - HC|Brainzzz - https://steamcommunity.com/sharedfiles/filedetails/?id=2122827579
+    - Afevis Solmunko - https://steamcommunity.com/sharedfiles/filedetails/?id=2123463940
 
 GitHub: https://github.com/Revenent/CnC_Remastered_Collection/
