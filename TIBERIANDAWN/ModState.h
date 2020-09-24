@@ -30,6 +30,9 @@ private:
     static bool s_isDismissShroud;
 
     static float s_harvesterBoost;
+    static float s_movementBoost;
+
+    static int s_tiberiumGrowthMultiplier;
 
     static volatile long s_creditBoostAmount;
     static volatile long s_powerBoostAmount;
@@ -129,6 +132,42 @@ public:
     static inline float GetHarvestorBoost(void)
     {
         return s_harvesterBoost;
+    }
+
+    static bool IncreaseMovementBoost(void);
+    static bool DecreaseMovementBoost(void);
+
+    static inline float GetMovementBoost(void)
+    {
+        return s_movementBoost;
+    }
+
+    static inline float GetGroundSpeedBias(HouseClass* house)
+    {
+        if (house == PlayerPtr)
+        {
+            return (house->GroundspeedBias * s_movementBoost);
+        }
+
+        return house->GroundspeedBias;
+    }
+
+    static inline float GetAirspeedBias(HouseClass* house)
+    {
+        if (house == PlayerPtr)
+        {
+            return (house->AirspeedBias * s_movementBoost);
+        }
+
+        return house->AirspeedBias;
+    }
+
+    static bool IncreaseTiberiumGrowthMultiplier(void);
+    static bool DecreaseTiberiumGrowthMultiplier(void);
+
+    static inline int GetTiberiumGrowthMultiplier(void)
+    {
+        return s_tiberiumGrowthMultiplier;
     }
 
     static inline void IncreaseCreditBoost(void)

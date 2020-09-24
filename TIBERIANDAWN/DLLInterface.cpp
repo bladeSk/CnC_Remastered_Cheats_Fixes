@@ -1568,6 +1568,30 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
                 ModState::SetDebugMessage(buffer);
                 break;
 
+            case VK_OEM_6:
+                ModState::IncreaseMovementBoost();
+                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
+                ModState::SetDebugMessage(buffer);
+                break;
+
+            case VK_OEM_4:
+                ModState::DecreaseMovementBoost();
+                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
+                ModState::SetDebugMessage(buffer);
+                break;
+
+            case VK_OEM_PERIOD:
+                ModState::IncreaseTiberiumGrowthMultiplier();
+                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
+                ModState::SetDebugMessage(buffer);
+                break;
+
+            case VK_OEM_COMMA:
+                ModState::DecreaseTiberiumGrowthMultiplier();
+                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
+                ModState::SetDebugMessage(buffer);
+                break;
+
             case VK_OEM_PLUS:
                 ModState::IncreaseHarvesterBoost();
                 sprintf_s(buffer, "Harvestor load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);

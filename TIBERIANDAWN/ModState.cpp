@@ -28,6 +28,9 @@ bool ModState::s_isInstantSuperweapons = false;
 bool ModState::s_isDismissShroud = false;
 
 float ModState::s_harvesterBoost = 10.0f;
+float ModState::s_movementBoost = 1.0f;
+
+int ModState::s_tiberiumGrowthMultiplier = 1;
 
 volatile long ModState::s_creditBoostAmount = 0;
 volatile long ModState::s_powerBoostAmount = 0;
@@ -75,6 +78,11 @@ bool ModState::IncreaseHarvesterBoost(void)
     if (s_harvesterBoost < 15.0f)
     {
         s_harvesterBoost += 0.5f;
+        if (s_harvesterBoost > 15.0f)
+        {
+            s_harvesterBoost = 15.0f;
+        }
+
         return true;
     }
 
@@ -91,6 +99,60 @@ bool ModState::DecreaseHarvesterBoost(void)
             s_harvesterBoost = 1.0f;
         }
 
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::IncreaseMovementBoost(void)
+{
+    if (s_movementBoost < 5.0f)
+    {
+        s_movementBoost += 0.5f;
+        if (s_movementBoost > 5.0f)
+        {
+            s_movementBoost = 5.0f;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::DecreaseMovementBoost(void)
+{
+    if (s_movementBoost > 0.5f)
+    {
+        s_movementBoost -= 0.5f;
+        if (s_movementBoost < 0.5f)
+        {
+            s_movementBoost = 0.5f;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::IncreaseTiberiumGrowthMultiplier(void)
+{
+    if (s_tiberiumGrowthMultiplier < 50)
+    {
+        s_tiberiumGrowthMultiplier++;
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::DecreaseTiberiumGrowthMultiplier(void)
+{
+    if (s_tiberiumGrowthMultiplier > 1)
+    {
+        s_tiberiumGrowthMultiplier--;
         return true;
     }
 

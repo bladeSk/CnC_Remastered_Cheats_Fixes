@@ -946,8 +946,8 @@ void MapClass::Logic(void)
 	TiberiumScan = index;
 
 	if (TiberiumScan >= MAP_CELL_TOTAL) {
-		int tries = 1;
-		if (Special.IsTFast || GameToPlay != GAME_NORMAL) tries = 2;
+		int tries = ModState::GetTiberiumGrowthMultiplier();
+		if (Special.IsTFast || GameToPlay != GAME_NORMAL) tries *= 2;
 		
 		/*
 		** Use the Tiberium setting as a multiplier on growth rate. ST - 7/1/2020 3:05PM
