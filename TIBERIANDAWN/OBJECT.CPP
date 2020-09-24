@@ -918,7 +918,7 @@ bool ObjectClass::Render(bool forced)
 	COORDINATE	coord = Render_Coord();
 	CELL	cell = Coord_Cell(coord);
 
-	if (Debug_Map || Debug_Unshroud || ((forced || IsToDisplay) && IsDown && !IsInLimbo)) {
+	if (Debug_Map || ModState::CanDismissShroud() || ((forced || IsToDisplay) && IsDown && !IsInLimbo)) {
 		IsToDisplay = false;
 
 		/*

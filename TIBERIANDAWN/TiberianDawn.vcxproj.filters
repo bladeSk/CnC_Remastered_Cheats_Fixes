@@ -630,6 +630,9 @@
     <ClInclude Include="DLLInterfaceVersion.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ModState.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AADATA.CPP">
@@ -1207,6 +1210,9 @@
     </ClCompile>
     <ClCompile Include="DLLInterfaceEditor.cpp" />
     <ClCompile Include="RULES.CPP">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

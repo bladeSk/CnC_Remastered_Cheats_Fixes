@@ -252,6 +252,7 @@
     <ClInclude Include="MESSAGE.H" />
     <ClInclude Include="MISSION.H" />
     <ClInclude Include="MIXFILE.H" />
+    <ClInclude Include="ModState.h" />
     <ClInclude Include="MONOC.H" />
     <ClInclude Include="MOUSE.H" />
     <ClInclude Include="MSGBOX.H" />
@@ -461,6 +462,7 @@
     <ClCompile Include="MiscAsm.cpp" />
     <ClCompile Include="MISSION.CPP" />
     <ClCompile Include="MIXFILE.CPP" />
+    <ClCompile Include="ModState.cpp" />
     <ClCompile Include="MONOC.CPP" />
     <ClCompile Include="MOUSE.CPP" />
     <ClCompile Include="MPLAYER.CPP" />

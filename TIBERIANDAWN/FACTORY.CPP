@@ -48,23 +48,23 @@
  *   FactoryClass::operator delete -- Returns a factory to the free factory pool.              *
  *   FactoryClass::operator new -- Allocates a factory object from the free factory pool.      *
  *   FactoryClass::~FactoryClass -- Default destructor for factory objects.                    *
- *   FactoryClass::Validate -- validates factory pointer													  *
+ *   FactoryClass::Validate -- validates factory pointer                                       *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include	"function.h"
 
 
 /***********************************************************************************************
- * FactoryClass::Validate -- validates factory pointer													  *
+ * FactoryClass::Validate -- validates factory pointer                                         *
  *                                                                                             *
  * INPUT:                                                                                      *
- *		none.																												  *
+ *      none.                                                                                  *
  *                                                                                             *
  * OUTPUT:                                                                                     *
- *		1 = ok, 0 = error																								  *
+ *      1 = ok, 0 = error                                                                      *
  *                                                                                             *
  * WARNINGS:                                                                                   *
- *		none.																												  *
+ *      none.                                                                                  *
  *                                                                                             *
  * HISTORY:                                                                                    *
  *   08/09/1995 BRR : Created.                                                                 *
@@ -72,15 +72,15 @@
 #ifdef CHEAT_KEYS
 int FactoryClass::Validate(void) const
 {
-	int num;
+    int num;
 
-	num = Factories.ID(this);
-	if (num < 0 || num >= FACTORY_MAX) {
-		Validate_Error("FACTORY");
-		return (0);
-	}
-	else
-		return (1);
+    num = Factories.ID(this);
+    if (num < 0 || num >= FACTORY_MAX) {
+        Validate_Error("FACTORY");
+        return (0);
+    }
+    else
+        return (1);
 }
 #else
 #define	Validate()
@@ -104,15 +104,15 @@ int FactoryClass::Validate(void) const
  *=============================================================================================*/
 FactoryClass::FactoryClass(void)
 {
-	IsSuspended = false;
-	IsDifferent = false;
-	IsBlocked	= false;
-	Balance		= 0;
-	SpecialItem = SPC_NONE;
-	Object 		= NULL;
-	House			= NULL;
-	Set_Rate(0);
-	Set_Stage(0);
+    IsSuspended = false;
+    IsDifferent = false;
+    IsBlocked	= false;
+    Balance		= 0;
+    SpecialItem = SPC_NONE;
+    Object 		= NULL;
+    House			= NULL;
+    Set_Rate(0);
+    Set_Stage(0);
 }
 
 
@@ -133,9 +133,9 @@ FactoryClass::FactoryClass(void)
  *=============================================================================================*/
 FactoryClass::~FactoryClass(void)
 {
-	if (GameActive) {
-		Abandon();
-	}
+    if (GameActive) {
+        Abandon();
+    }
 }
 
 
@@ -157,7 +157,7 @@ FactoryClass::~FactoryClass(void)
  *=============================================================================================*/
 void FactoryClass::Init(void)
 {
-	Factories.Free_All();
+    Factories.Free_All();
 }
 
 
@@ -178,11 +178,11 @@ void FactoryClass::Init(void)
  *=============================================================================================*/
 void * FactoryClass::operator new(size_t)
 {
-	void * ptr = Factories.Allocate();
-	if (ptr) {
-		((FactoryClass *)ptr)->IsActive = true;
-	}
-	return(ptr);
+    void * ptr = Factories.Allocate();
+    if (ptr) {
+        ((FactoryClass *)ptr)->IsActive = true;
+    }
+    return(ptr);
 }
 
 
@@ -203,10 +203,10 @@ void * FactoryClass::operator new(size_t)
  *=============================================================================================*/
 void FactoryClass::operator delete(void *ptr)
 {
-	if (ptr) {
-		((FactoryClass *)ptr)->IsActive = false;
-	}
-	Factories.Free((FactoryClass *)ptr);
+    if (ptr) {
+        ((FactoryClass *)ptr)->IsActive = false;
+    }
+    Factories.Free((FactoryClass *)ptr);
 }
 
 
@@ -230,73 +230,91 @@ void FactoryClass::operator delete(void *ptr)
  *=============================================================================================*/
 void FactoryClass::AI(void)
 {
-	Validate();
-	if (!IsSuspended && (Object != NULL || SpecialItem)) {
-		int stages = 1;
+    Validate();
+    if (!IsSuspended && (Object != NULL || SpecialItem)) {
+        int stages = 1;
+        bool isBuildable = false;
 
-		/*
-		**	Determine the acceleration factor for factory production.
-		**	This applies only to human players. The computer builds
-		**	units on a building by building basis -- quantity of building
-		**	factory types doesn't affect individual factories.
-		*/
-		if (Object && House->IsHuman) {
-			switch (Object->What_Am_I()) {
-				case RTTI_AIRCRAFT:
-					stages = House->AircraftFactories;
-					break;
+        /*
+        **	Determine the acceleration factor for factory production.
+        **	This applies only to human players. The computer builds
+        **	units on a building by building basis -- quantity of building
+        **	factory types doesn't affect individual factories.
+        */
+        if (Object && House->IsHuman) {
+            switch (Object->What_Am_I()) {
+                case RTTI_AIRCRAFT:
+                    stages = House->AircraftFactories;
+                    isBuildable = true;
+                    break;
 
-				case RTTI_INFANTRY:
-					stages = House->InfantryFactories;
-					break;
+                case RTTI_INFANTRY:
+                    stages = House->InfantryFactories;
+                    isBuildable = true;
+                    break;
 
-				case RTTI_UNIT:
-					stages = House->UnitFactories;
-					break;
+                case RTTI_UNIT:
+                    stages = House->UnitFactories;
+                    isBuildable = true;
+                    break;
 
-				case RTTI_BUILDING:
-					stages = House->BuildingFactories;
-					break;
-			}
-			stages = MAX(stages, 1);
-		}
+                case RTTI_BUILDING:
+                    stages = House->BuildingFactories;
+                    isBuildable = true;
+                    break;
+            }
+            stages = MAX(stages, 1);
+        }
 
 
-		for (int index = 0; index < stages; index++) {
-			if (!Has_Completed() && Graphic_Logic()) {
-				IsDifferent = true;
+        for (int index = 0; index < stages; index++) {
+            if (!Has_Completed() && Graphic_Logic()) {
+                IsDifferent = true;
 
-				int cost = Cost_Per_Tick();
+                int cost = Cost_Per_Tick();
 
-				cost = MIN(cost, Balance);
+                cost = MIN(cost, Balance);
 
-				/*
-				**	Enough time has expired so that another production step can occur.
-				**	If there is insufficient funds, then go back one production step and
-				**	continue the countdown. The idea being that by the time the next
-				**	production step occurs, there may be sufficient funds available.
-				*/
-				if (cost > House->Available_Money()) {
-					Set_Stage(Fetch_Stage()-1);
-				} else {
-					House->Spend_Money(cost);
-					Balance -= cost;
-				}
-				if ( Debug_Instant_Build ) {
-					Set_Stage(STEP_COUNT);
-				}
-				/*
-				**	If the production has completed, then suspend further production.
-				*/
-				if (Fetch_Stage() == STEP_COUNT) {
-					IsSuspended = true;
-					Set_Rate(0);
-					House->Spend_Money(Balance);
-					Balance = 0;
-				}
-			}
-		}
-	}
+                /*
+                **	Enough time has expired so that another production step can occur.
+                **	If there is insufficient funds, then go back one production step and
+                **	continue the countdown. The idea being that by the time the next
+                **	production step occurs, there may be sufficient funds available.
+                */
+                if (Debug_Instant_Build || ((House == PlayerPtr) && isBuildable && ModState::IsInstantBuildEnabled()))
+                {
+                    if (House->Available_Money() >= Balance)
+                    {
+                        Set_Stage(STEP_COUNT);
+                    }
+
+                    // If there isn't enough money, fall through to the default logic.
+                }
+
+                if (Fetch_Stage() != STEP_COUNT)
+                {
+                    if (cost > House->Available_Money())
+                    {
+                        Set_Stage(Fetch_Stage() - 1);
+                    }
+                    else
+                    {
+                        House->Spend_Money(cost);
+                        Balance -= cost;
+                    }
+                }
+                /*
+                **	If the production has completed, then suspend further production.
+                */
+                if (Fetch_Stage() == STEP_COUNT) {
+                    IsSuspended = true;
+                    Set_Rate(0);
+                    House->Spend_Money(Balance);
+                    Balance = 0;
+                }
+            }
+        }
+    }
 }
 
 
@@ -318,14 +336,14 @@ void FactoryClass::AI(void)
  *=============================================================================================*/
 void FactoryClass::Force_Complete(void)
 {
-	Validate();
-	if (!IsSuspended && (Object != NULL || SpecialItem)) {
-		Set_Stage(STEP_COUNT);
-		IsSuspended = true;
-		Set_Rate(0);
-		Balance = 0;
-		IsDifferent = true;
-	}
+    Validate();
+    if (!IsSuspended && (Object != NULL || SpecialItem)) {
+        Set_Stage(STEP_COUNT);
+        IsSuspended = true;
+        Set_Rate(0);
+        Balance = 0;
+        IsDifferent = true;
+    }
 }
 
 
@@ -347,10 +365,10 @@ void FactoryClass::Force_Complete(void)
  *=============================================================================================*/
 bool FactoryClass::Has_Changed(void)
 {
-	Validate();
-	bool changed = IsDifferent;
-	IsDifferent = false;
-	return(changed);
+    Validate();
+    bool changed = IsDifferent;
+    IsDifferent = false;
+    return(changed);
 }
 
 
@@ -378,35 +396,35 @@ bool FactoryClass::Has_Changed(void)
  *=============================================================================================*/
 bool FactoryClass::Set(TechnoTypeClass const & object, HouseClass & house)
 {
-	Validate();
-	/*
-	**	If there is any production currently in progress, abandon it.
-	*/
-	Abandon();
+    Validate();
+    /*
+    **	If there is any production currently in progress, abandon it.
+    */
+    Abandon();
 
-	/*
-	**	Set up the factory for the new production process.
-	*/
-	IsDifferent = true;
-	IsSuspended = true;
-	Set_Rate(0);
-	Set_Stage(0);
+    /*
+    **	Set up the factory for the new production process.
+    */
+    IsDifferent = true;
+    IsSuspended = true;
+    Set_Rate(0);
+    Set_Stage(0);
 
-	/*
-	**	Create an object of the type requested.
-	*/
-	Object = (TechnoClass *)object.Create_One_Of(&house);
+    /*
+    **	Create an object of the type requested.
+    */
+    Object = (TechnoClass *)object.Create_One_Of(&house);
 
-	if (Object) {
-		House  = Object->House;
-		Balance = object.Cost_Of() * house.CostBias;
-		Object->PurchasePrice = Balance;
-	}
+    if (Object) {
+        House  = Object->House;
+        Balance = object.Cost_Of() * house.CostBias;
+        Object->PurchasePrice = Balance;
+    }
 
-	/*
-	**	If all was set up successfully, then return true.
-	*/
-	return(Object != NULL);
+    /*
+    **	If all was set up successfully, then return true.
+    */
+    return(Object != NULL);
 }
 
 
@@ -429,31 +447,31 @@ bool FactoryClass::Set(TechnoTypeClass const & object, HouseClass & house)
  *=============================================================================================*/
 bool FactoryClass::Set(int const & type, HouseClass & house)
 {
-	Validate();
-	/*
-	**	If there is any production currently in progress, abandon it.
-	*/
-	Abandon();
+    Validate();
+    /*
+    **	If there is any production currently in progress, abandon it.
+    */
+    Abandon();
 
-	/*
-	**	Set up the factory for the new production process.
-	*/
-	IsDifferent = true;
-	IsSuspended = true;
-	Set_Rate(0);
-	Set_Stage(0);
+    /*
+    **	Set up the factory for the new production process.
+    */
+    IsDifferent = true;
+    IsSuspended = true;
+    Set_Rate(0);
+    Set_Stage(0);
 
-	/*
-	**	Create an object of the type requested.
-	*/
-	SpecialItem = type;
-	House = &house;
-	Balance = 0;
+    /*
+    **	Create an object of the type requested.
+    */
+    SpecialItem = type;
+    House = &house;
+    Balance = 0;
 
-	/*
-	**	If all was set up successfully, then return true.
-	*/
-	return(SpecialItem != SPC_NONE);
+    /*
+    **	If all was set up successfully, then return true.
+    */
+    return(SpecialItem != SPC_NONE);
 }
 
 
@@ -476,15 +494,15 @@ bool FactoryClass::Set(int const & type, HouseClass & house)
  *=============================================================================================*/
 void FactoryClass::Set(TechnoClass & object)
 {
-	Validate();
-	Abandon();
-	Object = &object;
-	House  = Object->House;
-	Balance = 0;
-	Set_Rate(0);
-	Set_Stage(STEP_COUNT);
-	IsDifferent = true;
-	IsSuspended = true;
+    Validate();
+    Abandon();
+    Object = &object;
+    House  = Object->House;
+    Balance = 0;
+    Set_Rate(0);
+    Set_Stage(STEP_COUNT);
+    IsDifferent = true;
+    IsSuspended = true;
 }
 
 
@@ -507,13 +525,13 @@ void FactoryClass::Set(TechnoClass & object)
  *=============================================================================================*/
 bool FactoryClass::Suspend(void)
 {
-	Validate();
-	if (!IsSuspended) {
-		IsSuspended = true;
-		Set_Rate(0);
-		return(true);
-	}
-	return(false);
+    Validate();
+    if (!IsSuspended) {
+        IsSuspended = true;
+        Set_Rate(0);
+        return(true);
+    }
+    return(false);
 }
 
 
@@ -535,26 +553,26 @@ bool FactoryClass::Suspend(void)
  *=============================================================================================*/
 bool FactoryClass::Start(void)
 {
-	Validate();
-	if ((Object || SpecialItem) && IsSuspended && !Has_Completed()) {
-		if (House->IsHuman || House->Available_Money() >= Cost_Per_Tick()) {
-			int time;
+    Validate();
+    if ((Object || SpecialItem) && IsSuspended && !Has_Completed()) {
+        if (House->IsHuman || House->Available_Money() >= Cost_Per_Tick()) {
+            int time;
 
-			if (Object) {
-				time = Object->Class_Of().Time_To_Build(House->Class->House);
-			} else {
-				time = TICKS_PER_MINUTE * 5;
-			}
+            if (Object) {
+                time = Object->Class_Of().Time_To_Build(House->Class->House);
+            } else {
+                time = TICKS_PER_MINUTE * 5;
+            }
 
-			time /= STEP_COUNT;
-			time = Bound(time, 1, 255);
+            time /= STEP_COUNT;
+            time = Bound(time, 1, 255);
 
-			Set_Rate(time);
-			IsSuspended = false;
-			return(true);
-		}
-	}
-	return(false);
+            Set_Rate(time);
+            IsSuspended = false;
+            return(true);
+        }
+    }
+    return(false);
 }
 
 
@@ -578,40 +596,40 @@ bool FactoryClass::Start(void)
  *=============================================================================================*/
 bool FactoryClass::Abandon(void)
 {
-	Validate();
-	if (Object) {
+    Validate();
+    if (Object) {
 
-		if (Object) {
-			/*
-			**	Refund all money expended so far, back to the owner of the object under construction.
-			*/
-			int money = Object->Class_Of().Cost_Of() * Object->House->CostBias;
-			House->Refund_Money(money - Balance);
-			Balance = 0;
+        if (Object) {
+            /*
+            **	Refund all money expended so far, back to the owner of the object under construction.
+            */
+            int money = Object->Class_Of().Cost_Of() * Object->House->CostBias;
+            House->Refund_Money(money - Balance);
+            Balance = 0;
 
-			/*
-			**	Delete the object under construction.
-			*/
-			ScenarioInit++;
-			delete Object;
-			Object = NULL;
-			ScenarioInit--;
-		}
-		if (SpecialItem) {
-			SpecialItem = SPC_NONE;
-		}
+            /*
+            **	Delete the object under construction.
+            */
+            ScenarioInit++;
+            delete Object;
+            Object = NULL;
+            ScenarioInit--;
+        }
+        if (SpecialItem) {
+            SpecialItem = SPC_NONE;
+        }
 
-		/*
-		**	Set the factory back to the idle and empty state.
-		*/
-		Set_Rate(0);
-		Set_Stage(0);
-		IsSuspended = true;
-		IsDifferent = true;
+        /*
+        **	Set the factory back to the idle and empty state.
+        */
+        Set_Rate(0);
+        Set_Stage(0);
+        IsSuspended = true;
+        IsDifferent = true;
 
-		return(true);
-	}
-	return(false);
+        return(true);
+    }
+    return(false);
 }
 
 
@@ -632,8 +650,8 @@ bool FactoryClass::Abandon(void)
  *=============================================================================================*/
 int FactoryClass::Completion(void)
 {
-	Validate();
-	return(Fetch_Stage());
+    Validate();
+    return(Fetch_Stage());
 }
 
 
@@ -654,14 +672,14 @@ int FactoryClass::Completion(void)
  *=============================================================================================*/
 bool FactoryClass::Has_Completed(void)
 {
-	Validate();
-	if (Object && Fetch_Stage() == STEP_COUNT) {
-		return(true);
-	}
-	if (SpecialItem && Fetch_Stage() == STEP_COUNT) {
-		return(true);
-	}
-	return(false);
+    Validate();
+    if (Object && Fetch_Stage() == STEP_COUNT) {
+        return(true);
+    }
+    if (SpecialItem && Fetch_Stage() == STEP_COUNT) {
+        return(true);
+    }
+    return(false);
 }
 
 
@@ -681,8 +699,8 @@ bool FactoryClass::Has_Completed(void)
  *=============================================================================================*/
 TechnoClass * FactoryClass::Get_Object(void) const
 {
-	Validate();
-	return(Object);
+    Validate();
+    return(Object);
 }
 
 
@@ -698,8 +716,8 @@ TechnoClass * FactoryClass::Get_Object(void) const
  *=========================================================================*/
 int FactoryClass::Get_Special_Item(void) const
 {
-	Validate();
-	return(SpecialItem);
+    Validate();
+    return(SpecialItem);
 }
 
 
@@ -719,15 +737,15 @@ int FactoryClass::Get_Special_Item(void) const
  *=============================================================================================*/
 int FactoryClass::Cost_Per_Tick(void)
 {
-	Validate();
-	if (Object) {
-		int steps = STEP_COUNT - Fetch_Stage();
-		if (steps) {
-			return(Balance / steps);
-		}
-		return(Balance);
-	}
-	return(0);
+    Validate();
+    if (Object) {
+        int steps = STEP_COUNT - Fetch_Stage();
+        if (steps) {
+            return(Balance / steps);
+        }
+        return(Balance);
+    }
+    return(0);
 }
 
 
@@ -750,23 +768,23 @@ int FactoryClass::Cost_Per_Tick(void)
  *=============================================================================================*/
 bool FactoryClass::Completed(void)
 {
-	Validate();
-	if (Object && Fetch_Stage() == STEP_COUNT) {
-		Object = NULL;
-		IsSuspended = true;
-		IsDifferent = true;
-		Set_Stage(0);
-		Set_Rate(0);
-		return(true);
-	}
+    Validate();
+    if (Object && Fetch_Stage() == STEP_COUNT) {
+        Object = NULL;
+        IsSuspended = true;
+        IsDifferent = true;
+        Set_Stage(0);
+        Set_Rate(0);
+        return(true);
+    }
 
-	if (SpecialItem && Fetch_Stage() == STEP_COUNT) {
-		SpecialItem = SPC_NONE;
-		IsSuspended = true;
-		IsDifferent = true;
-		Set_Stage(0);
-		Set_Rate(0);
-		return(true);
-	}
-	return(false);
+    if (SpecialItem && Fetch_Stage() == STEP_COUNT) {
+        SpecialItem = SPC_NONE;
+        IsSuspended = true;
+        IsDifferent = true;
+        Set_Stage(0);
+        Set_Rate(0);
+        return(true);
+    }
+    return(false);
 }
