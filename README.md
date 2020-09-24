@@ -19,7 +19,6 @@ Tiberian Dawn Cheat Mod that provides multiple cheat functionality:
 
 5.  Dismiss shroud (CTRL+ALT+H)
     - Shows the entire map
-    - Note that while this mode is enabled, units will not expand the map, so when the mode is disabled, it will revert the map to the last time the mode was disabled.
 
 6.  Harvester load boost (CTRL+ALT+-/+)
     - Decrease (-) or increase (+) the total load by 50% of the normal load (700 credits).
