@@ -29,8 +29,8 @@ private:
     static bool s_isInstantSuperweapons;
     static bool s_isDismissShroud;
 
-    static float s_harvesterBoost;
-    static float s_movementBoost;
+    static int s_harvesterBoost;
+    static int s_movementBoost;
 
     static int s_tiberiumGrowthMultiplier;
 
@@ -126,12 +126,12 @@ public:
 
     static inline int GetHarvesterFullLoadCredits(void)
     {
-        return (int)(UnitTypeClass::FULL_LOAD_CREDITS * s_harvesterBoost);
+        return (int)(UnitTypeClass::FULL_LOAD_CREDITS * s_harvesterBoost / 10.0f);
     }
 
     static inline float GetHarvestorBoost(void)
     {
-        return s_harvesterBoost;
+        return (s_harvesterBoost / 10.0f);
     }
 
     static bool IncreaseMovementBoost(void);
@@ -139,24 +139,32 @@ public:
 
     static inline float GetMovementBoost(void)
     {
-        return s_movementBoost;
+        return s_movementBoost / 10.0f;
     }
 
     static inline float GetGroundSpeedBias(HouseClass* house)
     {
         if (house == PlayerPtr)
         {
-            return (house->GroundspeedBias * s_movementBoost);
+            return ((house->GroundspeedBias * s_movementBoost) / 10.0f);
         }
 
         return house->GroundspeedBias;
     }
 
-    static inline float GetAirspeedBias(HouseClass* house)
+    static inline float GetAirspeedBias(HouseClass* house, AircraftClass* object)
     {
         if (house == PlayerPtr)
         {
-            return (house->AirspeedBias * s_movementBoost);
+            float bias = ((house->AirspeedBias * s_movementBoost) / 10.0f);
+
+            if ((*object) == AIRCRAFT_A10)
+            {
+                // If the A10 goes too fast, it misses the target and gets stuck circling the target forever.
+                return min(bias, 1.5f);
+            }
+
+            return bias;
         }
 
         return house->AirspeedBias;

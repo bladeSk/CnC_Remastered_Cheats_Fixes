@@ -3183,7 +3183,7 @@ TARGET AircraftClass::Good_LZ(void) const
 void AircraftClass::Set_Speed(int speed)
 {
 	Validate();
-	MPHType sp = MPHType(min((unsigned)(Class->MaxSpeed * ModState::GetAirspeedBias(House)), MPH_LIGHT_SPEED));
+	MPHType sp = MPHType(min((unsigned)(Class->MaxSpeed * ModState::GetAirspeedBias(House, this)), MPH_LIGHT_SPEED));
 	Fly_Speed(speed, sp);
 }
 

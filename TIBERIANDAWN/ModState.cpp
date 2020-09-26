@@ -27,8 +27,8 @@ bool ModState::s_isInstantBuild = false;
 bool ModState::s_isInstantSuperweapons = false;
 bool ModState::s_isDismissShroud = false;
 
-float ModState::s_harvesterBoost = 10.0f;
-float ModState::s_movementBoost = 1.0f;
+int ModState::s_harvesterBoost = 100;
+int ModState::s_movementBoost = 10;
 
 int ModState::s_tiberiumGrowthMultiplier = 1;
 
@@ -75,14 +75,9 @@ bool ModState::ToggleDismissShroud(void)
 
 bool ModState::IncreaseHarvesterBoost(void)
 {
-    if (s_harvesterBoost < 15.0f)
+    if (s_harvesterBoost < 150)
     {
-        s_harvesterBoost += 0.5f;
-        if (s_harvesterBoost > 15.0f)
-        {
-            s_harvesterBoost = 15.0f;
-        }
-
+        s_harvesterBoost += 5;
         return true;
     }
 
@@ -91,14 +86,9 @@ bool ModState::IncreaseHarvesterBoost(void)
 
 bool ModState::DecreaseHarvesterBoost(void)
 {
-    if (s_harvesterBoost > 1.0f)
+    if (s_harvesterBoost > 10)
     {
-        s_harvesterBoost -= 0.5f;
-        if (s_harvesterBoost < 1.0f)
-        {
-            s_harvesterBoost = 1.0f;
-        }
-
+        s_harvesterBoost -= 5;
         return true;
     }
 
@@ -107,14 +97,9 @@ bool ModState::DecreaseHarvesterBoost(void)
 
 bool ModState::IncreaseMovementBoost(void)
 {
-    if (s_movementBoost < 5.0f)
+    if (s_movementBoost < 50)
     {
-        s_movementBoost += 0.5f;
-        if (s_movementBoost > 5.0f)
-        {
-            s_movementBoost = 5.0f;
-        }
-
+        s_movementBoost += 5;
         return true;
     }
 
@@ -123,14 +108,9 @@ bool ModState::IncreaseMovementBoost(void)
 
 bool ModState::DecreaseMovementBoost(void)
 {
-    if (s_movementBoost > 0.5f)
+    if (s_movementBoost > 5)
     {
-        s_movementBoost -= 0.5f;
-        if (s_movementBoost < 0.5f)
-        {
-            s_movementBoost = 0.5f;
-        }
-
+        s_movementBoost -= 5;
         return true;
     }
 
