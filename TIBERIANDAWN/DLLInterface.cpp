@@ -1527,7 +1527,7 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
             switch (keyParam->vkCode)
             {
             case VK_N:
-                mode = ModState::ToggleNoDamageMode();
+                mode = ModState::ToggleNoDamage();
                 sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
                 ModState::SetDebugMessage(buffer);
                 break;
@@ -1553,6 +1553,12 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
             case VK_H:
                 mode = ModState::ToggleDismissShroud();
                 sprintf_s(buffer, "Dismiss shroud mode: %s", mode ? "enabled" : "disabled");
+                ModState::SetDebugMessage(buffer);
+                break;
+
+            case VK_U:
+                mode = ModState::ToggleUnlimitedAmmo();
+                sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", mode ? "enabled" : "disabled");
                 ModState::SetDebugMessage(buffer);
                 break;
 
@@ -5916,7 +5922,7 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
             PlayerPtr->IsRecalcNeeded = true;
         }
 
-        if (ModState::NeedsHealing())
+        if (ModState::NeedHealing())
         {
             int index;
             for (index = 0; index < Units.Count(); index++)

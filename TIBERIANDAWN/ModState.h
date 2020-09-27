@@ -21,13 +21,14 @@ extern bool Debug_Unshroud;
 class ModState
 {
 private:
-    static bool s_isNoDamageMode;
-    static bool s_needsHealing;
+    static bool s_isNoDamage;
+    static bool s_needHealing;
     static bool s_isUnlockBuildOptions;
     static bool s_needUnlockBuildOptions;
     static bool s_isInstantBuild;
     static bool s_isInstantSuperweapons;
     static bool s_isDismissShroud;
+    static bool s_isUnlimitedAmmo;
 
     static int s_harvesterBoost;
     static int s_movementBoost;
@@ -42,15 +43,15 @@ private:
     static bool s_isFirstMessage;
 
 public:
-    static bool ToggleNoDamageMode(void);
+    static bool ToggleNoDamage(void);
     
-    static inline bool IsNoDamageModeEnabled(void) { return s_isNoDamageMode; };
+    static inline bool IsNoDamageEnabled(void) { return s_isNoDamage; };
 
-    static inline bool NeedsHealing(void)
+    static inline bool NeedHealing(void)
     {
-        if (s_needsHealing)
+        if (s_needHealing)
         {
-            s_needsHealing = false;
+            s_needHealing = false;
             return true;
         }
 
@@ -61,7 +62,7 @@ public:
     {
         if (target->House == PlayerPtr)
         {
-            return !s_isNoDamageMode;
+            return !s_isNoDamage;
         }
 
         return target->Class_Of().IsCrushable;
@@ -71,7 +72,7 @@ public:
     {
         if (target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
         {
-            return !s_isNoDamageMode;
+            return !s_isNoDamage;
         }
 
         return target->Class_Of().IsCrushable;
@@ -119,6 +120,31 @@ public:
     static inline bool CanDismissShroud(void)
     {
         return (Debug_Unshroud || s_isDismissShroud);
+    }
+
+    static bool ToggleUnlimitedAmmo(void);
+
+    static inline bool IsUnlimitedAmmoEnabled(void)
+    {
+        return s_isUnlimitedAmmo;
+    }
+
+    static inline bool IsUnlimitedAmmoEnabled(TechnoClass* object)
+    {
+        if (object->House == PlayerPtr)
+        {
+            if (object->What_Am_I() == RTTI_AIRCRAFT)
+            {
+                AircraftType type = *((AircraftClass*)object);
+
+                if ((type == AIRCRAFT_ORCA) || (type == AIRCRAFT_HELICOPTER))
+                {
+                    return s_isUnlimitedAmmo;
+                }
+            }
+        }
+
+        return false;
     }
 
     static bool IncreaseHarvesterBoost(void);

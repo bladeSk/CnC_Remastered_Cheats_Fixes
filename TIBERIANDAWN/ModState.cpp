@@ -19,13 +19,14 @@
 
 const char* StartupMessage = "Mod started.\n";
 
-bool ModState::s_isNoDamageMode = false;
-bool ModState::s_needsHealing = false;
+bool ModState::s_isNoDamage = false;
+bool ModState::s_needHealing = false;
 bool ModState::s_isUnlockBuildOptions = false;
 bool ModState::s_needUnlockBuildOptions = false;
 bool ModState::s_isInstantBuild = false;
 bool ModState::s_isInstantSuperweapons = false;
 bool ModState::s_isDismissShroud = false;
+bool ModState::s_isUnlimitedAmmo = false;
 
 int ModState::s_harvesterBoost = 100;
 int ModState::s_movementBoost = 10;
@@ -40,18 +41,26 @@ bool ModState::s_isDebugMessageRead = true;
 bool ModState::s_isFirstMessage = true;
 
 
-bool ModState::ToggleNoDamageMode(void)
+bool ModState::ToggleNoDamage(void)
 {
-    s_isNoDamageMode = !s_isNoDamageMode;
-    s_needsHealing = true;
-    return s_isNoDamageMode;
+    s_isNoDamage = !s_isNoDamage;
+    if (s_isNoDamage)
+    {
+        s_needHealing = true;
+    }
+
+    return s_isNoDamage;
 }
 
 
 bool ModState::ToggleUnlockBuildOptions(void)
 {
-    s_isUnlockBuildOptions = !s_isUnlockBuildOptions;
-    s_needUnlockBuildOptions = true;
+    if (!s_isUnlockBuildOptions)
+    {
+        s_isUnlockBuildOptions = !s_isUnlockBuildOptions;
+        s_needUnlockBuildOptions = true;
+    }
+
     return s_isUnlockBuildOptions;
 }
 
@@ -71,6 +80,12 @@ bool ModState::ToggleDismissShroud(void)
 {
     s_isDismissShroud = !s_isDismissShroud;
     return s_isDismissShroud;
+}
+
+bool ModState::ToggleUnlimitedAmmo(void)
+{
+    s_isUnlimitedAmmo = !s_isUnlimitedAmmo;
+    return s_isUnlimitedAmmo;
 }
 
 bool ModState::IncreaseHarvesterBoost(void)

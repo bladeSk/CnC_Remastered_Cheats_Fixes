@@ -2393,7 +2393,7 @@ BulletClass * TechnoClass::Fire_At(TARGET target, int which)
         /*
         **	Reduce ammunition for this object.
         */
-        if (Ammo > 0) {
+        if (!ModState::IsUnlimitedAmmoEnabled(this) && (Ammo > 0)) {
             Ammo--;
         }
 
@@ -3011,7 +3011,7 @@ ResultType TechnoClass::Take_Damage(int & damage, int distance, WarheadType warh
 
     ResultType result;
         
-    if ((House == PlayerPtr) && ModState::IsNoDamageModeEnabled())
+    if ((House == PlayerPtr) && ModState::IsNoDamageEnabled())
     {
         // This ensures the retaliation response kicks in - otherwise, the units would sit there and never fire back.
         result = RESULT_LIGHT;
