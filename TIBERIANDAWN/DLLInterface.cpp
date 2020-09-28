@@ -1526,6 +1526,10 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
             switch (keyParam->vkCode)
             {
+            case VK_OEM_2:
+                ModState::TriggerNeedShowHelp();
+                break;
+
             case VK_N:
                 mode = ModState::ToggleNoDamage();
                 sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
@@ -1600,13 +1604,13 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
             case VK_OEM_PLUS:
                 ModState::IncreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvestor load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
+                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
                 ModState::SetDebugMessage(buffer);
                 break;
 
             case VK_OEM_MINUS:
                 ModState::DecreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvestor load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
+                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
                 ModState::SetDebugMessage(buffer);
                 break;
             }
@@ -5899,6 +5903,15 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
             if (debugMessage != NULL)
             {
                 On_Message(PlayerPtr, debugMessage, 5, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
+            }
+
+            if (ModState::NeedShowHelp())
+            {
+                const char* helpLine = ModState::GetNextHelpMessageLine();
+                if (helpLine != NULL)
+                {
+                    On_Message(PlayerPtr, helpLine, 30, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
+                }
             }
         }
 

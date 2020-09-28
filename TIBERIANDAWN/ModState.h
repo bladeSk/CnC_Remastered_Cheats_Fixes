@@ -38,13 +38,17 @@ private:
     static volatile long s_creditBoostAmount;
     static volatile long s_powerBoostAmount;
 
+    static bool s_needShowHelp;
+    static int s_helpMessageIndex;
+    static const char* s_helpMessages[];
+
     static char s_debugMessageBuffer[256];
     static bool s_isDebugMessageRead;
     static bool s_isFirstMessage;
 
 public:
     static bool ToggleNoDamage(void);
-    
+
     static inline bool IsNoDamageEnabled(void) { return s_isNoDamage; };
 
     static inline bool NeedHealing(void)
@@ -57,7 +61,7 @@ public:
 
         return false;
     }
-    
+
     static inline bool IsCrushable(TechnoClass* target)
     {
         if (target->House == PlayerPtr)
@@ -67,7 +71,7 @@ public:
 
         return target->Class_Of().IsCrushable;
     }
-    
+
     static inline bool IsCrushable(ObjectClass* target)
     {
         if (target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
@@ -97,7 +101,7 @@ public:
     }
 
     static bool ToggleInstantBuild(void);
-    
+
     static inline bool IsInstantBuildEnabled(void)
     {
         return s_isInstantBuild;
@@ -223,6 +227,15 @@ public:
     {
         return (int)InterlockedExchange(&s_powerBoostAmount, 0);
     }
+
+    static bool TriggerNeedShowHelp(void);
+
+    static inline bool NeedShowHelp(void)
+    {
+        return s_needShowHelp;
+    }
+
+    static const char* GetNextHelpMessageLine(void);
 
     static void SetDebugMessage(const char* message);
     static const char* GetAndClearDebugMessage(void);

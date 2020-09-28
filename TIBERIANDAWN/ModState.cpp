@@ -17,7 +17,7 @@
 
 #include "ModState.h"
 
-const char* StartupMessage = "Mod started.\n";
+static const char* StartupMessage = "Mod started.\n";
 
 bool ModState::s_isNoDamage = false;
 bool ModState::s_needHealing = false;
@@ -35,6 +35,24 @@ int ModState::s_tiberiumGrowthMultiplier = 1;
 
 volatile long ModState::s_creditBoostAmount = 0;
 volatile long ModState::s_powerBoostAmount = 0;
+
+bool ModState::s_needShowHelp = false;
+int ModState::s_helpMessageIndex = 0;
+const char* ModState::s_helpMessages[] = {
+    "Tiberian Dawn Cheat Mod Help:\n"
+    "\n",
+    "CTRL+ALT+B:   Enable unlock build mode (cannot disable)\n",
+    "CTRL+ALT+H:   Toggle dismiss shroud\n",
+    "CTRL+ALT+I:   Toggle instant build for buildings and units\n",
+    "CTRL+ALT+N:   Toggle no damage\n",
+    "CTRL+ALT+P:   Toggle instant superweapon charging\n",
+    "CTRL+ALT+U:   Toggle unlimited ammo for aircrafts\n",
+    "CTRL+ALT+M:   Boost credits\n",
+    "CTRL+ALT+O:   Boost power\n",
+    "CTRL+ALT+-/+: Decrease/Increase harvester load by 50% of normal\n"
+    "CTRL+ALT+[/]: Decrease/Increase movement boost by 50% of normal\n",
+    "CTRL+ALT+,/.: Decrease/Increase Tiberium growth factor\n",
+};
 
 char ModState::s_debugMessageBuffer[256] = { 0 };
 bool ModState::s_isDebugMessageRead = true;
@@ -152,6 +170,27 @@ bool ModState::DecreaseTiberiumGrowthMultiplier(void)
     }
 
     return false;
+}
+
+bool ModState::TriggerNeedShowHelp(void)
+{
+    if (!s_needShowHelp)
+    {
+        s_needShowHelp = true;
+    }
+
+    return true;
+}
+
+const char* ModState::GetNextHelpMessageLine()
+{
+    if ((s_helpMessageIndex < 0) || (s_helpMessageIndex >= (sizeof(s_helpMessages) / sizeof(s_helpMessages[0]))))
+    {
+        s_needShowHelp = false;
+        return NULL;
+    }
+
+    return s_helpMessages[s_helpMessageIndex++];
 }
 
 void ModState::SetDebugMessage(const char* message)
