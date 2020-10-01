@@ -1438,6 +1438,15 @@ static int sortfunc(void const * ptr1, void const * ptr2)
 bool SidebarClass::StripClass::Add(RTTIType type, int id, bool via_capture)
 {
 	if (BuildableCount < MAX_BUILDABLES) {
+        if (ModState::IsUnlockBuildOptionsEnabled())
+        {
+            const TechnoTypeClass* typeClass = Fetch_Techno_Type(type, id);
+            if (typeClass && ((typeClass->Level > 98) || (typeClass->Scenario > 98)))
+            {
+                return(false);
+            }
+        }
+
 		for (int index = 0; index < BuildableCount; index++) {
 			if (Buildables[index].BuildableType == type && Buildables[index].BuildableID == id) {
 				return(false);
