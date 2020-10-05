@@ -55,6 +55,11 @@ Finally, CTRL+ALT+/ will show the currently available cheats and their associate
 
 This may be useful when new functionality is added to the mod.
 
+Registry overrides: For users that cannot or do not want to use the keyboard method, the following registry key can be used to provide overrides for the settings:
+
+HKEY_CURRENT_USER\\SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2236325862
+
+This key will be created after running the mod at least once.
 
 
 Based on work done by:
