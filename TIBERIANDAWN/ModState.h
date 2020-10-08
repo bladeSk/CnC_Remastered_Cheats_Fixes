@@ -69,9 +69,9 @@ public:
 
     static inline bool IsCrushable(TechnoClass* target)
     {
-        if (target->House == PlayerPtr)
+        if (s_isNoDamage && target->House == PlayerPtr)
         {
-            return !s_isNoDamage;
+            return false;
         }
 
         return target->Class_Of().IsCrushable;
@@ -79,9 +79,9 @@ public:
 
     static inline bool IsCrushable(ObjectClass* target)
     {
-        if (target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
+        if (s_isNoDamage && target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
         {
-            return !s_isNoDamage;
+            return false;
         }
 
         return target->Class_Of().IsCrushable;
@@ -242,6 +242,8 @@ public:
     static const char* GetNextModMessage(void);
 
 private:
+    static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);
+
     static void LoadSettings(void);
     static HKEY SaveSettings(void);
 };

@@ -274,6 +274,28 @@ const char* ModState::GetNextModMessage(void)
 }
 
 
+void ModState::SetBoolFromRegistry(HKEY hkSettings, LPCSTR szValue, LPCSTR szName, bool* pbValue)
+{
+    char buffer[256] = { 0 };
+
+    DWORD dwData;
+    DWORD dwSize;
+
+    if (::RegGetValue(hkSettings, NULL, szValue, RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    {
+        bool bNewValue = (dwData != 0);
+        bool bDifferent = (*pbValue != bNewValue);
+        
+        *pbValue = bNewValue;
+
+        if (bDifferent)
+        {
+            sprintf_s(buffer, "%s: %s", szName, bNewValue ? "enabled" : "disabled");
+            ModState::AddModMessage(buffer);
+        }
+    }
+}
+
 void ModState::LoadSettings(void)
 {
     HKEY hkSettings;
@@ -293,79 +315,43 @@ void ModState::LoadSettings(void)
 
     DWORD dwData;
     DWORD dwSize;
+    bool bShowMessage = false;
 
-    if (::RegGetValue(hkSettings, NULL, "EnableKeyboardHook", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isKeyboardHook = (dwData != 0);
+    SetBoolFromRegistry(hkSettings, "EnableKeyboardHook", "Keyboard hook", &s_isKeyboardHook);
+    SetBoolFromRegistry(hkSettings, "EnableNoDamage", "No damage mode", &s_isNoDamage);
+    SetBoolFromRegistry(hkSettings, "EnableUnlockBuildOptions", "Unlock build mode", &s_isUnlockBuildOptions);
+    SetBoolFromRegistry(hkSettings, "EnableInstantBuild", "Instant build mode", &s_isInstantBuild);
+    SetBoolFromRegistry(hkSettings, "EnableInstantSuperweapons", "Instant superweapons mode", &s_isInstantSuperweapons);
+    SetBoolFromRegistry(hkSettings, "EnableDismissShroud", "Dismiss shroud mode", &s_isDismissShroud);
+    SetBoolFromRegistry(hkSettings, "EnableUnlimitedAmmo", "Unlimited ammo for aircrafts", &s_isUnlimitedAmmo);
 
-        sprintf_s(buffer, "Keyboard hook: %s", s_isKeyboardHook ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableNoDamage", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isNoDamage = (dwData != 0);
-        s_needHealing = s_isNoDamage;
-
-        sprintf_s(buffer, "No damage mode: %s", s_isNoDamage ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableUnlockBuildOptions", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isUnlockBuildOptions = (dwData != 0);
-        s_needUnlockBuildOptions = s_isUnlockBuildOptions;
-
-        sprintf_s(buffer, "Unlock build mode: %s", s_isUnlockBuildOptions ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableInstantBuild", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isInstantBuild = (dwData != 0);
-
-        sprintf_s(buffer, "Instant build mode: %s", s_isInstantBuild ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableInstantSuperweapons", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isInstantSuperweapons = (dwData != 0);
-
-        sprintf_s(buffer, "Instant superweapons mode: %s", s_isInstantSuperweapons ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableDismissShroud", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isDismissShroud = (dwData != 0);
-
-        sprintf_s(buffer, "Dismiss shroud mode: %s", s_isDismissShroud ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
-
-    if (::RegGetValue(hkSettings, NULL, "EnableUnlimitedAmmo", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        s_isUnlimitedAmmo = (dwData != 0);
-    
-        sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", s_isUnlimitedAmmo ? "enabled" : "disabled");
-        ModState::AddModMessage(buffer);
-    }
+    s_needHealing = s_isNoDamage;
+    s_needUnlockBuildOptions = s_isUnlockBuildOptions;
 
     if (::RegGetValue(hkSettings, NULL, "HarvesterBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
     {
-        s_harvesterBoost = (int)(MAX(0UL, MIN(dwData, 150UL)));
+        int iNewValue = (int)(MAX(0UL, MIN(dwData, 150UL)));
+        bool bIsDifferent = (s_harvesterBoost != iNewValue);
+        s_harvesterBoost = iNewValue;
 
-        sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-        ModState::AddModMessage(buffer);
+        if (bIsDifferent)
+        {
+            sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
+            ModState::AddModMessage(buffer);
+        }
     }
 
     if (::RegGetValue(hkSettings, NULL, "MovementBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
     {
-        s_movementBoost = (int)(MAX(5UL, MIN(dwData, 50UL)));
+        int iNewValue = (int)(MAX(5UL, MIN(dwData, 50UL)));;
+        bool bIsDifferent = (s_movementBoost != iNewValue);
+        s_movementBoost = iNewValue;
 
-        sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-        ModState::AddModMessage(buffer);
+        if (bIsDifferent)
+        {
+            sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
+            ModState::AddModMessage(buffer);
+        }
     }
 
     if (::RegGetValue(hkSettings, NULL, "InitialCreditBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)

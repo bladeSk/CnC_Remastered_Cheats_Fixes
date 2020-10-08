@@ -2102,6 +2102,7 @@ void DLLExportClass::Init(void)
         if (keyboardHook == NULL)
         {
             Hooked = false;
+            ModState::AddModMessage("Failed to hook keyboard");
         }
     }
 }
