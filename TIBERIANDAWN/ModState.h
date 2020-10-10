@@ -21,6 +21,7 @@ extern bool Debug_Unshroud;
 class ModState
 {
 private:
+    static bool s_isKeyboardHook;
     static bool s_isNoDamage;
     static bool s_needHealing;
     static bool s_isUnlockBuildOptions;
@@ -38,15 +39,19 @@ private:
     static volatile long s_creditBoostAmount;
     static volatile long s_powerBoostAmount;
 
-    static bool s_needShowHelp;
-    static int s_helpMessageIndex;
     static const char* s_helpMessages[];
 
-    static char s_debugMessageBuffer[256];
-    static bool s_isDebugMessageRead;
-    static bool s_isFirstMessage;
+    static int s_messageSkipFrames;
+    static char s_modMessageBuffers[256][256];
+    static int s_modMessageReadIndex;
+    static int s_modMessageWriteIndex;
+    static CRITICAL_SECTION s_modMessageCritSec;
 
 public:
+    static void Initialize(void);
+
+    static inline bool IsKeyboardHook(void) { return s_isKeyboardHook; }
+
     static bool ToggleNoDamage(void);
 
     static inline bool IsNoDamageEnabled(void) { return s_isNoDamage; };
@@ -64,9 +69,9 @@ public:
 
     static inline bool IsCrushable(TechnoClass* target)
     {
-        if (target->House == PlayerPtr)
+        if (s_isNoDamage && target->House == PlayerPtr)
         {
-            return !s_isNoDamage;
+            return false;
         }
 
         return target->Class_Of().IsCrushable;
@@ -74,9 +79,9 @@ public:
 
     static inline bool IsCrushable(ObjectClass* target)
     {
-        if (target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
+        if (s_isNoDamage && target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
         {
-            return !s_isNoDamage;
+            return false;
         }
 
         return target->Class_Of().IsCrushable;
@@ -230,15 +235,17 @@ public:
 
     static bool TriggerNeedShowHelp(void);
 
-    static inline bool NeedShowHelp(void)
-    {
-        return s_needShowHelp;
-    }
+    static void MarkFrame(void);
 
-    static const char* GetNextHelpMessageLine(void);
+    static void AddModMessage(const char* message);
+    static void AddModMessages(__in_ecount(count) const char* messages[], int count);
+    static const char* GetNextModMessage(void);
 
-    static void SetDebugMessage(const char* message);
-    static const char* GetAndClearDebugMessage(void);
+private:
+    static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);
+
+    static void LoadSettings(void);
+    static HKEY SaveSettings(void);
 };
 
 #endif

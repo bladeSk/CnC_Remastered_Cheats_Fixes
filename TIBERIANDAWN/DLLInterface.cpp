@@ -1533,85 +1533,85 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
             case VK_N:
                 mode = ModState::ToggleNoDamage();
                 sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_B:
                 mode = ModState::ToggleUnlockBuildOptions();
                 sprintf_s(buffer, "Unlock build mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_I:
                 mode = ModState::ToggleInstantBuild();
                 sprintf_s(buffer, "Instant build mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_P:
                 mode = ModState::ToggleInstantSuperweapons();
                 sprintf_s(buffer, "Instant superweapons mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_H:
                 mode = ModState::ToggleDismissShroud();
                 sprintf_s(buffer, "Dismiss shroud mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_U:
                 mode = ModState::ToggleUnlimitedAmmo();
                 sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_M:
                 ModState::IncreaseCreditBoost();
                 sprintf_s(buffer, "Credits boosted");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_O:
                 ModState::IncreasePowerBoost();
                 sprintf_s(buffer, "Power boosted");
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_6:
                 ModState::IncreaseMovementBoost();
                 sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_4:
                 ModState::DecreaseMovementBoost();
                 sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_PERIOD:
                 ModState::IncreaseTiberiumGrowthMultiplier();
                 sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_COMMA:
                 ModState::DecreaseTiberiumGrowthMultiplier();
                 sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_PLUS:
                 ModState::IncreaseHarvesterBoost();
                 sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
 
             case VK_OEM_MINUS:
                 ModState::DecreaseHarvesterBoost();
                 sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
+                ModState::AddModMessage(buffer);
                 break;
             }
         }
@@ -1725,6 +1725,8 @@ extern "C" __declspec(dllexport) bool __cdecl CNC_Advance_Instance(uint64 player
         DLLExportClass::Logic_Switch_Player_Context(old_player_ptr);
     }
     FirstUpdate = false;
+
+    ModState::MarkFrame();
 
     /*
     **	Manage the inter-player message list.  If Manage() returns true, it means
@@ -2091,10 +2093,17 @@ void DLLExportClass::Init(void)
 
     CurrentLocalPlayerIndex = 0;
 
-    if (!Hooked)
+    ModState::Initialize();
+
+    if (!Hooked && ModState::IsKeyboardHook())
     {
         Hooked = true;
         keyboardHook = ::SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProc, NULL, NULL);
+        if (keyboardHook == NULL)
+        {
+            Hooked = false;
+            ModState::AddModMessage("Failed to hook keyboard");
+        }
     }
 }
 
@@ -5898,20 +5907,11 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
     {
         if (EventCallback != NULL)
         {
-            const char* debugMessage = ModState::GetAndClearDebugMessage();
+            const char* debugMessage = ModState::GetNextModMessage();
 
             if (debugMessage != NULL)
             {
                 On_Message(PlayerPtr, debugMessage, 5, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
-            }
-
-            if (ModState::NeedShowHelp())
-            {
-                const char* helpLine = ModState::GetNextHelpMessageLine();
-                if (helpLine != NULL)
-                {
-                    On_Message(PlayerPtr, helpLine, 30, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
-                }
             }
         }
 
