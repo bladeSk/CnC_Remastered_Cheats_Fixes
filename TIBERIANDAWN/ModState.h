@@ -16,7 +16,16 @@
 #ifndef MODSTATE_H
 #define MODSTATE_H
 
+constexpr auto MaxModMessages = 256;
+constexpr auto MaxModMessageLength = 256;
+
 extern bool Debug_Unshroud;
+
+struct ModMessage
+{
+    const char* szMessage;
+    int iTimeout;
+};
 
 class ModState
 {
@@ -42,7 +51,8 @@ private:
     static const char* s_helpMessages[];
 
     static int s_messageSkipFrames;
-    static char s_modMessageBuffers[256][256];
+    static char s_modMessageBuffers[MaxModMessages][MaxModMessageLength];
+    static ModMessage s_modMessages[MaxModMessages];
     static int s_modMessageReadIndex;
     static int s_modMessageWriteIndex;
     static CRITICAL_SECTION s_modMessageCritSec;
@@ -237,9 +247,9 @@ public:
 
     static void MarkFrame(void);
 
-    static void AddModMessage(const char* message);
-    static void AddModMessages(__in_ecount(count) const char* messages[], int count);
-    static const char* GetNextModMessage(void);
+    static void AddModMessage(const char* message, int timeout = 0);
+    static void AddModMessages(__in_ecount(count) const char* messages[], int count, int timeout = 0);
+    static const ModMessage* GetNextModMessage(void);
 
 private:
     static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);

@@ -5907,11 +5907,11 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
     {
         if (EventCallback != NULL)
         {
-            const char* debugMessage = ModState::GetNextModMessage();
+            const ModMessage* debugMessage = ModState::GetNextModMessage();
 
             if (debugMessage != NULL)
             {
-                On_Message(PlayerPtr, debugMessage, 5, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
+                On_Message(PlayerPtr, debugMessage->szMessage, debugMessage->iTimeout, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
             }
         }
 

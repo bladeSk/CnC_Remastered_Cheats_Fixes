@@ -54,7 +54,8 @@ const char* ModState::s_helpMessages[] = {
 };
 
 int ModState::s_messageSkipFrames = 2;
-char ModState::s_modMessageBuffers[256][256] = { 0 };
+char ModState::s_modMessageBuffers[MaxModMessages][MaxModMessageLength] = { 0 };
+ModMessage ModState::s_modMessages[MaxModMessages] = { 0 };
 int ModState::s_modMessageReadIndex = 0;
 int ModState::s_modMessageWriteIndex = 0;
 CRITICAL_SECTION ModState::s_modMessageCritSec = { 0 };
@@ -65,6 +66,12 @@ static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conqu
 void ModState::Initialize(void)
 {
     InitializeCriticalSection(&s_modMessageCritSec);
+    
+    for (int index = 0; index < ARRAYSIZE(s_modMessages); index++)
+    {
+        s_modMessages[index].szMessage = s_modMessageBuffers[index];
+        s_modMessages[index].iTimeout = 0;
+    }
 
     ModState::AddModMessage(StartupMessage);
 
@@ -187,7 +194,7 @@ bool ModState::DecreaseTiberiumGrowthMultiplier(void)
 
 bool ModState::TriggerNeedShowHelp(void)
 {
-    ModState::AddModMessages(s_helpMessages, ARRAYSIZE(s_helpMessages));
+    ModState::AddModMessages(s_helpMessages, ARRAYSIZE(s_helpMessages), 30);
 
     return true;
 }
@@ -211,13 +218,14 @@ void ModState::MarkFrame(void)
 }
 
 
-void ModState::AddModMessage(const char* message)
+void ModState::AddModMessage(const char* message, int timeout)
 {
     if (message != NULL)
     {
         EnterCriticalSection(&s_modMessageCritSec);
 
         strncpy_s(s_modMessageBuffers[s_modMessageWriteIndex], message, ARRAYSIZE(s_modMessageBuffers[s_modMessageWriteIndex]));
+        s_modMessages[s_modMessageWriteIndex].iTimeout = (timeout > 0) ? timeout : 5;
 
         s_modMessageWriteIndex++;
         if (s_modMessageWriteIndex >= ARRAYSIZE(s_modMessageBuffers))
@@ -229,7 +237,7 @@ void ModState::AddModMessage(const char* message)
     }
 }
 
-void ModState::AddModMessages(const char* messages[], int count)
+void ModState::AddModMessages(const char* messages[], int count, int timeout)
 {
     EnterCriticalSection(&s_modMessageCritSec);
 
@@ -238,6 +246,7 @@ void ModState::AddModMessages(const char* messages[], int count)
         if (messages[index] != NULL)
         {
             strncpy_s(s_modMessageBuffers[s_modMessageWriteIndex], messages[index], ARRAYSIZE(s_modMessageBuffers[s_modMessageWriteIndex]));
+            s_modMessages[s_modMessageWriteIndex].iTimeout = (timeout > 0) ? timeout : 5;
 
             s_modMessageWriteIndex++;
             if (s_modMessageWriteIndex >= ARRAYSIZE(s_modMessageBuffers))
@@ -250,9 +259,9 @@ void ModState::AddModMessages(const char* messages[], int count)
     LeaveCriticalSection(&s_modMessageCritSec);
 }
 
-const char* ModState::GetNextModMessage(void)
+const ModMessage* ModState::GetNextModMessage(void)
 {
-    const char* message = NULL;
+    const ModMessage* message = NULL;
 
     EnterCriticalSection(&s_modMessageCritSec);
 
@@ -261,7 +270,7 @@ const char* ModState::GetNextModMessage(void)
         return message;
     }
 
-    message = s_modMessageBuffers[s_modMessageReadIndex];
+    message = &(s_modMessages[s_modMessageReadIndex]);
     s_modMessageReadIndex++;
     if (s_modMessageReadIndex >= ARRAYSIZE(s_modMessageBuffers))
     {
@@ -276,7 +285,7 @@ const char* ModState::GetNextModMessage(void)
 
 void ModState::SetBoolFromRegistry(HKEY hkSettings, LPCSTR szValue, LPCSTR szName, bool* pbValue)
 {
-    char buffer[256] = { 0 };
+    char buffer[MaxModMessageLength] = { 0 };
 
     DWORD dwData;
     DWORD dwSize;
@@ -311,7 +320,7 @@ void ModState::LoadSettings(void)
         return;
     }
 
-    char buffer[256] = { 0 };
+    char buffer[MaxModMessageLength] = { 0 };
 
     DWORD dwData;
     DWORD dwSize;
