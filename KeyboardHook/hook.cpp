@@ -19,7 +19,7 @@ HookData* GetHookData(void);
 
 bool _isKeyDown[256];
 
-extern "C" __declspec(dllexport) BOOL __cdecl InstallHook(LPHOOKCONFIGURATION lpHookConfiguration)
+extern "C" __declspec(dllexport) BOOL __cdecl InstallHook(LPCHOOKCONFIGURATION lpHookConfiguration)
 {
     if (lpHookConfiguration == NULL)
     {
@@ -76,8 +76,6 @@ extern "C" __declspec(dllexport) BOOL __cdecl GetKeyData(WPARAM index, LPHOOKKEY
     return FALSE;
 }
 
-
-#pragma optimize("", off)
 
 HookData* GetHookData(void)
 {
@@ -222,5 +220,3 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
     return ::CallNextHookEx(_hookHandle, nCode, wParam, lParam);
 }
-
-#pragma optimize("", on)

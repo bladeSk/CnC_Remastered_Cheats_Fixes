@@ -15,8 +15,6 @@
 
 #include "function.h"
 
-#include "ModState.h"
-
 static const char* StartupMessage = "Mod started.\n";
 
 bool ModState::s_isKeyboardHook = true;
@@ -37,21 +35,31 @@ int ModState::s_tiberiumGrowthMultiplier = 1;
 volatile long ModState::s_creditBoostAmount = 0;
 volatile long ModState::s_powerBoostAmount = 0;
 
-const char* ModState::s_helpMessages[] = {
-    "Tiberian Dawn Cheat Mod Help:\n"
-    "\n",
-    "CTRL+ALT+B:   Enable unlock build mode (cannot disable)\n",
-    "CTRL+ALT+H:   Toggle dismiss shroud\n",
-    "CTRL+ALT+I:   Toggle instant build for buildings and units\n",
-    "CTRL+ALT+N:   Toggle no damage\n",
-    "CTRL+ALT+P:   Toggle instant superweapon charging\n",
-    "CTRL+ALT+U:   Toggle unlimited ammo for aircrafts\n",
-    "CTRL+ALT+M:   Boost credits\n",
-    "CTRL+ALT+O:   Boost power\n",
-    "CTRL+ALT+-/+: Decrease/Increase harvester load by 50% of normal\n"
-    "CTRL+ALT+[/]: Decrease/Increase movement boost by 50% of normal\n",
-    "CTRL+ALT+,/.: Decrease/Increase Tiberium growth factor\n",
+HookConfiguration ModState::s_hookConfiguration = { 0 };
+
+const char* ModState::s_helpBaseText[] = {
+    "",
+    "Show help",
+    "Toggle no damage",
+    "Enable unlock build mode (cannot disable)",
+    "Toggle instant build for buildings and units",
+    "Toggle instant superweapon charging",
+    "Toggle dismiss shroud",
+    "Toggle unlimited ammo for aircrafts",
+    "Boost credits",
+    "Boost power",
+    "Increase movement boost by 50% of normal",
+    "Decrease movement boost by 50% of normal",
+    "Increase Tiberium growth factor",
+    "Decrease Tiberium growth factor",
+    "Increase harvester load by 50% of normal",
+    "Decrease harvester load by 50% of normal",
+    "Save current settings"
 };
+char ModState::s_modifierKeyNames[3][32] = { 0 };
+char ModState::s_helpMessages[KEYHOOK_MAXHOOKKEYS + 2][MaxModMessageLength] = { 0 };
+
+bool ModState::s_needSaveSettings = false;
 
 int ModState::s_messageSkipFrames = 2;
 char ModState::s_modMessageBuffers[MaxModMessages][MaxModMessageLength] = { 0 };
@@ -194,11 +202,79 @@ bool ModState::DecreaseTiberiumGrowthMultiplier(void)
 
 bool ModState::TriggerNeedShowHelp(void)
 {
-    ModState::AddModMessages(s_helpMessages, ARRAYSIZE(s_helpMessages), 30);
+    static char baseKeyName[32] = { 0 };
+
+    if (s_modifierKeyNames[0][0] == 0)
+    {
+        LONG lParam = 0;
+
+        UINT uiAltScanCode = MapVirtualKey(VK_MENU, MAPVK_VK_TO_VSC);
+        UINT uiCtrlScanCode = MapVirtualKey(VK_CONTROL, MAPVK_VK_TO_VSC);
+        UINT uiShiftScanCode = MapVirtualKey(VK_SHIFT, MAPVK_VK_TO_VSC);
+
+        lParam = (uiAltScanCode << 16) | (1 << 25);
+        GetKeyNameText(lParam, s_modifierKeyNames[0], ARRAYSIZE(s_modifierKeyNames[0]));
+
+        lParam = (uiCtrlScanCode << 16) | (1 << 25);
+        GetKeyNameText(lParam, s_modifierKeyNames[1], ARRAYSIZE(s_modifierKeyNames[1]));
+
+        lParam = (uiShiftScanCode << 16) | (1 << 25);
+        GetKeyNameText(lParam, s_modifierKeyNames[2], ARRAYSIZE(s_modifierKeyNames[2]));
+    }
+
+    if (s_helpMessages[0][0] == 0)
+    {
+        sprintf_s(s_helpMessages[0], "Tiberian Dawn Cheat Mod Help:\n");
+        sprintf_s(s_helpMessages[1], " \n");
+
+        for (int index = 0; index < (int)(s_hookConfiguration.dwEntries); index++)
+        {
+            KeyConfiguration* pKey = &(s_hookConfiguration.kcEntries[index]);
+            DWORD dwPrimaryKey = pKey->dwPrimaryKey;
+            DWORD dwBaseKey = dwPrimaryKey & 0xFF;
+            UINT uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
+
+            GetKeyNameText((uiScanCode << 16) | (1 << 25), baseKeyName, ARRAYSIZE(baseKeyName));
+
+            bool isAlt = (dwPrimaryKey & KEYSTATE_ALT) != 0;
+            bool isCtrl = (dwPrimaryKey & KEYSTATE_CTRL) != 0;
+            bool isShift = (dwPrimaryKey & KEYSTATE_SHIFT) != 0;
+
+            sprintf_s(s_helpMessages[index + 2], "%s: %s%s%s%s%s%s%s",
+                s_helpBaseText[pKey->uMessage - WM_USER],
+                isCtrl ? s_modifierKeyNames[1] : "",
+                isCtrl ? "+" : "",
+                isAlt ? s_modifierKeyNames[0] : "",
+                isAlt ? "+" : "",
+                isShift ? s_modifierKeyNames[2] : "",
+                isShift ? "+" : "",
+                baseKeyName);
+        }
+    }
+
+    for (DWORD dwIndex = 0; dwIndex < (s_hookConfiguration.dwEntries + 2); dwIndex++)
+    {
+        ModState::AddModMessage(s_helpMessages[dwIndex], 30);
+    }
 
     return true;
 }
 
+bool ModState::TriggerNeedSaveSettings(void)
+{
+    s_needSaveSettings = true;
+
+    return true;
+}
+
+void ModState::SaveCurrentSettings(void)
+{
+    s_needSaveSettings = false;
+
+    HKEY hkSettings = SaveSettings();
+
+    RegCloseKey(hkSettings);
+}
 
 void ModState::MarkFrame(void)
 {
@@ -267,7 +343,6 @@ const ModMessage* ModState::GetNextModMessage(void)
 
     if (!s_messageSkipFrames && (s_modMessageReadIndex != s_modMessageWriteIndex))
     {
-
         message = &(s_modMessages[s_modMessageReadIndex]);
         s_modMessageReadIndex++;
         if (s_modMessageReadIndex >= ARRAYSIZE(s_modMessageBuffers))
@@ -301,6 +376,51 @@ void ModState::SetBoolFromRegistry(HKEY hkSettings, LPCSTR szValue, LPCSTR szNam
             sprintf_s(buffer, "%s: %s", szName, bNewValue ? "enabled" : "disabled");
             ModState::AddModMessage(buffer);
         }
+    }
+}
+
+void ModState::SetHookKeyEntry(KeyConfiguration& entry, UINT uMessage, DWORD dwPrimaryKey, BOOL bIsChorded, DWORD dwMaxKeys, DWORD dwEndKey)
+{
+    entry.uMessage = uMessage;
+    entry.dwPrimaryKey = dwPrimaryKey;
+    entry.bIsChorded = bIsChorded;
+    entry.dwMaxKeys = dwMaxKeys;
+    entry.dwEndKey = dwEndKey;
+}
+
+void ModState::SetHookKeyEntryFromRegistry(
+    KeyConfiguration& entry,
+    HKEY hkSettings,
+    LPCSTR szValue,
+    UINT uMessage,
+    DWORD dwPrimaryKey,
+    BOOL bIsChorded,
+    DWORD dwMaxKeys,
+    DWORD dwEndKey)
+{
+    BYTE abData[sizeof(KeyConfiguration)];
+    DWORD dwSize;
+    KeyConfiguration* pData = (KeyConfiguration*)abData;
+
+    if (::RegGetValue(hkSettings, NULL, szValue, RRF_RT_REG_BINARY, NULL, &abData, &dwSize) == ERROR_SUCCESS)
+    {
+        SetHookKeyEntry(entry, uMessage, pData->dwPrimaryKey, pData->bIsChorded, pData->dwMaxKeys, pData->dwEndKey);
+    }
+    else
+    {
+        SetHookKeyEntry(entry, uMessage, dwPrimaryKey, bIsChorded, dwMaxKeys, dwEndKey);
+    }
+}
+
+void ModState::SetHookKeyEntryToRegistry(
+    KeyConfiguration& entry,
+    HKEY hkSettings,
+    LPCSTR szValue,
+    LPCSTR szFailMessage)
+{
+    if (::RegSetValueEx(hkSettings, szValue, 0, REG_BINARY, (const BYTE*)&entry, sizeof(KeyConfiguration)) != ERROR_SUCCESS)
+    {
+        ModState::AddModMessage(szFailMessage);
     }
 }
 
@@ -362,6 +482,19 @@ void ModState::LoadSettings(void)
         }
     }
 
+    if (::RegGetValue(hkSettings, NULL, "TiberiumGrowthMultiplier", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    {
+        int iNewValue = (int)(MAX(1UL, MIN(dwData, 50UL)));;
+        bool bIsDifferent = (s_tiberiumGrowthMultiplier != iNewValue);
+        s_tiberiumGrowthMultiplier = iNewValue;
+
+        if (bIsDifferent)
+        {
+            sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
+            ModState::AddModMessage(buffer);
+        }
+    }
+
     if (::RegGetValue(hkSettings, NULL, "InitialCreditBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
     {
         s_creditBoostAmount = MAX(0L, (long)dwData);
@@ -381,6 +514,26 @@ void ModState::LoadSettings(void)
             ModState::AddModMessage("Power boosted");
         }
     }
+
+    s_hookConfiguration.dwSize = sizeof(HookConfiguration);
+    s_hookConfiguration.dwEntries = 16;
+
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", WM_USER + 1, VK_OEM_2 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", WM_USER + 2, VK_N | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", WM_USER + 3, VK_B | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", WM_USER + 4, VK_I | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", WM_USER + 5, VK_P | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", WM_USER + 6, VK_H | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", WM_USER + 7, VK_U | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", WM_USER + 8, VK_M | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", WM_USER + 9, VK_O | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", WM_USER + 10, VK_OEM_6 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", WM_USER + 11, VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", WM_USER + 12, VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", WM_USER + 13, VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", WM_USER + 14, VK_OEM_PLUS | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", WM_USER + 15, VK_OEM_MINUS | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", WM_USER + 16, VK_S | KEYSTATE_ALT | KEYSTATE_CTRL);
 
     RegCloseKey(hkSettings);
 }
@@ -443,6 +596,12 @@ HKEY ModState::SaveSettings(void)
         ModState::AddModMessage("Failed to save harvester boost value.");
     }
 
+    dwData = s_tiberiumGrowthMultiplier;
+    if (::RegSetValueEx(hkSettings, "TiberiumGrowthMultiplier", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
+    {
+        ModState::AddModMessage("Failed to save Tiberium growth multiplier value.");
+    }
+
     dwData = s_movementBoost;
     if (::RegSetValueEx(hkSettings, "MovementBoost", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
     {
@@ -458,6 +617,24 @@ HKEY ModState::SaveSettings(void)
     {
         ModState::AddModMessage("Failed to save power boost value.");
     }
+
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", "Failed to save help key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", "Failed to save no damage key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", "Failed to save unlock build options key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", "Failed to save instant build key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", "Failed to save instant superweapons key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", "Failed to save dismiss shroud key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", "Failed to save unlimited ammo key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", "Failed to save credit boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", "Failed to save power boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", "Failed to save increase movement boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", "Failed to save decrease movement boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", "Failed to save increase Tiberium growth factor key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", "Failed to save decrease Tiberium growth factor key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", "Failed to save increase harvester boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", "Failed to save decrease harvester boost key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", "Failed to save save settings key configuration.");
+
 
     return hkSettings;
 }

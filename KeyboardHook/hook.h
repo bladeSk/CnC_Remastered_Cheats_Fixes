@@ -25,6 +25,7 @@ struct HookConfiguration
 };
 
 typedef HookConfiguration HOOKCONFIGURATION, *LPHOOKCONFIGURATION;
+typedef const HookConfiguration *LPCHOOKCONFIGURATION;
 
 struct HookKeyData
 {
@@ -33,6 +34,7 @@ struct HookKeyData
 };
 
 typedef HookKeyData HOOKKEYDATA, *LPHOOKKEYDATA;
+typedef const HookKeyData *LPCHOOKKEYDATA;
 
 union KeyHookLParam
 {
@@ -51,7 +53,7 @@ union KeyHookLParam
 
 extern "C"
 {
-    typedef BOOL(__cdecl *InstallHookProc)(LPHOOKCONFIGURATION);
+    typedef BOOL(__cdecl *InstallHookProc)(LPCHOOKCONFIGURATION);
     typedef BOOL(__cdecl *UninstallHookProc)(void);
     typedef BOOL(__cdecl *GetKeyDataProc)(WPARAM, LPHOOKKEYDATA);
 }

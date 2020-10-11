@@ -60,8 +60,6 @@ extern bool Color_Cycle(void);
 bool Debug_Write_Shape_Type(const ObjectTypeClass *type, int shapenum);
 bool Debug_Write_Shape(const char *file_name, void const * shapefile, int shapenum, int flags = 0, void const * ghostdata = NULL);
 
-void HookMessageLoop(void);
-
 typedef void (__cdecl* CNC_Event_Callback_Type)(const EventCallbackStruct &event);
 typedef unsigned __int64 uint64;
 typedef __int64 int64;
@@ -314,8 +312,6 @@ class DLLExportClass {
 
         static bool Hooked;
 
-        static HookConfiguration HookConfiguration;
-
         static HANDLE HookThreadHandle;
         static DWORD HookThreadId;
 
@@ -363,7 +359,6 @@ unsigned char DLLExportClass::SpecialKeyFlags[MAX_PLAYERS] = { 0U };
 DynamicVectorClass<char *> DLLExportClass::ModSearchPaths;
 bool DLLExportClass::GameOver = false;
 bool DLLExportClass::Hooked = false;
-HookConfiguration DLLExportClass::HookConfiguration = { 0 };
 HANDLE DLLExportClass::HookThreadHandle = NULL;
 DWORD DLLExportClass::HookThreadId = 0;
 
@@ -1447,9 +1442,8 @@ InstallHookProc installHookProc = NULL;
 UninstallHookProc uninstallHookProc = NULL;
 GetKeyDataProc getKeyDataProc = NULL;
 
-#pragma optimize("", off)
 
-BOOL LoadHookDll(LPHOOKCONFIGURATION lpHookConfiguration)
+BOOL LoadHookDll(LPCHOOKCONFIGURATION lpHookConfiguration)
 {
     char szModulePath[MAX_PATH];
     char szHookPath[MAX_PATH];
@@ -1458,7 +1452,7 @@ BOOL LoadHookDll(LPHOOKCONFIGURATION lpHookConfiguration)
 
     if (GetModuleHandleEx(
         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-        (LPCSTR)&HookMessageLoop,
+        (LPCSTR)&LoadHookDll,
         &hm) == 0)
     {
         return FALSE;
@@ -1485,6 +1479,9 @@ BOOL LoadHookDll(LPHOOKCONFIGURATION lpHookConfiguration)
 
     if ((installHookProc == NULL) || (uninstallHookProc == NULL) || (getKeyDataProc == NULL))
     {
+        ::FreeLibrary(hHookInstance);
+        hHookInstance = NULL;
+
         return FALSE;
     }
 
@@ -1506,14 +1503,16 @@ BOOL UnloadHookDll(void)
     return FALSE;
 }
 
-#pragma optimize("", on)
-
 DWORD WINAPI HookMessageThread(LPVOID lpParameter)
 {
+    static char buffer[256] = { 0 };
+
     MSG msg;
     BOOL bRet;
+    
+    bool bContinue = true;
 
-    while ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0)
+    while (bContinue && ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0))
     {
         if (bRet == -1)
         {
@@ -1521,249 +1520,120 @@ DWORD WINAPI HookMessageThread(LPVOID lpParameter)
         }
         else
         {
-            if ((msg.message >= WM_USER) && (getKeyDataProc != NULL))
-            {
-                HOOKKEYDATA hkdData = { 0 };
-                getKeyDataProc(msg.wParam, &hkdData);
-
-                char buffer[256];
-                sprintf_s(
-                    buffer,
-                    "Hook key received: %d, %d, %d --> %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x",
-                    msg.message,
-                    msg.wParam,
-                    hkdData.dwEntries,
-                    hkdData.dwKeys[0],
-                    hkdData.dwKeys[1],
-                    hkdData.dwKeys[2],
-                    hkdData.dwKeys[3],
-                    hkdData.dwKeys[4],
-                    hkdData.dwKeys[5],
-                    hkdData.dwKeys[6],
-                    hkdData.dwKeys[7]);
-
-                ModState::AddModMessage(buffer);
-            }
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return 0;
-}
-
-void HookMessageLoop(void)
-{
-    MSG msg;
-
-    while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
-    {
-        if (!GetMessage(&msg, NULL, 0, 0))
-        {
-            return;
-        }
-
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-
-        if ((msg.hwnd == NULL) && (msg.message >= WM_USER) && (getKeyDataProc != NULL))
-        {
-            HOOKKEYDATA hkdData = { 0 };
-            getKeyDataProc(msg.wParam, &hkdData);
-
-            char buffer[256];
-            sprintf_s(
-                buffer,
-                "Hook key received: %d, %d, %d --> %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x",
-                msg.message,
-                msg.wParam,
-                hkdData.dwEntries,
-                hkdData.dwKeys[0],
-                hkdData.dwKeys[1],
-                hkdData.dwKeys[2],
-                hkdData.dwKeys[3],
-                hkdData.dwKeys[4],
-                hkdData.dwKeys[5],
-                hkdData.dwKeys[6],
-                hkdData.dwKeys[7]);
-
-            ModState::AddModMessage(buffer);
-        }
-    }
-}
-
-bool isKeyDown[256];
-
-bool IsActiveKey(DWORD vkCode, WPARAM action)
-{
-    if ((action == WM_SYSKEYDOWN) || (action == WM_KEYDOWN))
-    {
-        if (!isKeyDown[vkCode])
-        {
-            isKeyDown[vkCode] = true;
-            return true;
-        }
-        
-        return false;
-    }
-    else if ((action == WM_SYSKEYUP) || (action == WM_KEYUP))
-    {
-        isKeyDown[vkCode] = false;
-        return false;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-HHOOK keyboardHook;
-
-LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    static bool isHandlingEvent = false;
-    static bool isControl = false;
-    static bool isAlt = false;
-    static bool isShift = false;
-    static char buffer[64] = { 0 };
-
-    if ((nCode != HC_ACTION) || isHandlingEvent)
-    {
-        return ::CallNextHookEx(NULL, nCode, wParam, lParam);
-    }
-
-    isHandlingEvent = true;
-
-    PKBDLLHOOKSTRUCT keyParam = (PKBDLLHOOKSTRUCT)lParam;
-
-    bool isStateKey = true;
-    switch (keyParam->vkCode)
-    {
-    case VK_LCONTROL:
-    case VK_RCONTROL:
-    case VK_CONTROL:
-        isControl = (wParam == WM_KEYDOWN);
-        break;
-
-    case VK_LSHIFT:
-    case VK_RSHIFT:
-    case VK_SHIFT:
-        isShift = (wParam == WM_KEYDOWN);
-        break;
-
-    case VK_LMENU:
-    case VK_RMENU:
-    case VK_MENU:
-        isAlt = (wParam == WM_KEYDOWN);
-        break;
-
-    default:
-        isStateKey = false;
-        break;
-    }
-
-    if (!isStateKey && ((wParam == WM_SYSKEYDOWN) || (wParam == WM_KEYDOWN) || (wParam == WM_SYSKEYUP) || (wParam == WM_KEYUP)))
-    {
-        if (IsActiveKey(keyParam->vkCode, wParam) && isControl && isAlt)
-        {
             bool mode = false;
 
-            switch (keyParam->vkCode)
+            switch (msg.message)
             {
-            case VK_OEM_2:
+            case WM_USER:
+                bContinue = false;
+                break;
+
+            case WM_USER + 1:
                 ModState::TriggerNeedShowHelp();
                 break;
 
-            case VK_N:
+            case WM_USER + 2:
                 mode = ModState::ToggleNoDamage();
                 sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_B:
+            case WM_USER + 3:
                 mode = ModState::ToggleUnlockBuildOptions();
                 sprintf_s(buffer, "Unlock build mode: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_I:
+            case WM_USER + 4:
                 mode = ModState::ToggleInstantBuild();
                 sprintf_s(buffer, "Instant build mode: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_P:
+            case WM_USER + 5:
                 mode = ModState::ToggleInstantSuperweapons();
                 sprintf_s(buffer, "Instant superweapons mode: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_H:
+            case WM_USER + 6:
                 mode = ModState::ToggleDismissShroud();
                 sprintf_s(buffer, "Dismiss shroud mode: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_U:
+            case WM_USER + 7:
                 mode = ModState::ToggleUnlimitedAmmo();
                 sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", mode ? "enabled" : "disabled");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_M:
+            case WM_USER + 8:
                 ModState::IncreaseCreditBoost();
                 sprintf_s(buffer, "Credits boosted");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_O:
+            case WM_USER + 9:
                 ModState::IncreasePowerBoost();
                 sprintf_s(buffer, "Power boosted");
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_6:
+            case WM_USER + 10:
                 ModState::IncreaseMovementBoost();
                 sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_4:
+            case WM_USER + 11:
                 ModState::DecreaseMovementBoost();
                 sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_PERIOD:
+            case WM_USER + 12:
                 ModState::IncreaseTiberiumGrowthMultiplier();
                 sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_COMMA:
+            case WM_USER + 13:
                 ModState::DecreaseTiberiumGrowthMultiplier();
                 sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_PLUS:
+            case WM_USER + 14:
                 ModState::IncreaseHarvesterBoost();
                 sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
                 ModState::AddModMessage(buffer);
                 break;
 
-            case VK_OEM_MINUS:
+            case WM_USER + 15:
                 ModState::DecreaseHarvesterBoost();
                 sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
                 ModState::AddModMessage(buffer);
                 break;
+
+            case WM_USER + 16:
+                ModState::TriggerNeedSaveSettings();
+                sprintf_s(buffer, "Saving current settings");
+                ModState::AddModMessage(buffer);
+                break;
             }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        if (!bContinue)
+        {
+            break;
         }
     }
 
-    isHandlingEvent = false;
-    return ::CallNextHookEx(NULL, nCode, wParam, lParam);
+    return 0;
 }
 
 
@@ -1831,8 +1701,6 @@ extern "C" __declspec(dllexport) bool __cdecl CNC_Advance_Instance(uint64 player
         //if (input) {
         //	Keyboard_Process(input);
         //}
-
-        HookMessageLoop();
 
         if (GameToPlay == GAME_GLYPHX_MULTIPLAYER) {
             /*
@@ -2243,30 +2111,22 @@ void DLLExportClass::Init(void)
 
     ModState::Initialize();
 
-    HookConfiguration.dwSize = sizeof(HookConfiguration);
-    HookConfiguration.dwEntries = 1;
-    
-    HookConfiguration.kcEntries[0].bIsChorded = TRUE;
-    HookConfiguration.kcEntries[0].dwPrimaryKey = VK_OEM_3;
-    HookConfiguration.kcEntries[0].dwEndKey = VK_OEM_3;
-    HookConfiguration.kcEntries[0].dwMaxKeys = 8;
-    HookConfiguration.kcEntries[0].uMessage = WM_USER + 1;
-
     if (!Hooked && ModState::IsKeyboardHook())
     {
         Hooked = true;
-        keyboardHook = ::SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProc, NULL, NULL);
-        if (keyboardHook == NULL)
+
+        HookThreadHandle = CreateThread(NULL, 0, HookMessageThread, NULL, 0, &HookThreadId);
+        ModState::SetHookMessageThreadId(HookThreadId);
+
+        if (LoadHookDll(ModState::GetHookConfiguration()) == FALSE)
         {
+            PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
+            CloseHandle(HookThreadHandle);
+
             Hooked = false;
             ModState::AddModMessage("Failed to hook keyboard");
         }
     }
-
-    HookThreadHandle = CreateThread(NULL, 0, HookMessageThread, NULL, 0, &HookThreadId);
-    HookConfiguration.dwMessageThreadId = HookThreadId;
-
-    LoadHookDll(&HookConfiguration);
 }
 
 
@@ -2286,16 +2146,19 @@ void DLLExportClass::Shutdown(void)
 {
     if (Hooked)
     {
+        UnloadHookDll();
+
+        if (HookThreadHandle)
+        {
+            BOOL bRes = PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
+            DWORD dwRes = ::GetLastError();
+
+            CloseHandle(HookThreadHandle);
+        }
+
         Hooked = false;
-        ::UnhookWindowsHookEx(keyboardHook);
     }
 
-    ::UnloadHookDll();
-
-    if (HookThreadHandle)
-    {
-        ::PostThreadMessage(HookThreadId, WM_QUIT, 0, NULL);
-    }
 
     for (int i=0 ; i<ModSearchPaths.Count() ; i++) {
         delete [] ModSearchPaths[i];
@@ -6142,6 +6005,11 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
                     buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
                 }
             }
+        }
+
+        if (ModState::NeedSaveSettings())
+        {
+            ModState::SaveCurrentSettings();
         }
     }
 

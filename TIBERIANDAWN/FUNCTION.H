@@ -285,6 +285,7 @@ CELL __cdecl Coord_Cell(COORDINATE coord);
 #include	"ipxaddr.h"
 #include "FACINGFF.h"
 
+#include "hook.h"
 #include "ModState.h"
 /****************************************************************************
 **	This is a "node", used for the lists of available games & players.  The

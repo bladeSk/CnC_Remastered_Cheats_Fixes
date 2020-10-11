@@ -48,7 +48,13 @@ private:
     static volatile long s_creditBoostAmount;
     static volatile long s_powerBoostAmount;
 
-    static const char* s_helpMessages[];
+    static HookConfiguration s_hookConfiguration;
+
+    static const char* s_helpBaseText[];
+    static char s_modifierKeyNames[3][32];
+    static char s_helpMessages[KEYHOOK_MAXHOOKKEYS + 2][MaxModMessageLength];
+
+    static bool s_needSaveSettings;
 
     static int s_messageSkipFrames;
     static char s_modMessageBuffers[MaxModMessages][MaxModMessageLength];
@@ -243,7 +249,26 @@ public:
         return (int)InterlockedExchange(&s_powerBoostAmount, 0);
     }
 
+    static const HookConfiguration* GetHookConfiguration(void)
+    {
+        return &s_hookConfiguration;
+    }
+
+    static void SetHookMessageThreadId(DWORD dwThreadId)
+    {
+        s_hookConfiguration.dwMessageThreadId = dwThreadId;
+    }
+
     static bool TriggerNeedShowHelp(void);
+
+    static bool TriggerNeedSaveSettings(void);
+
+    static bool NeedSaveSettings(void)
+    {
+        return s_needSaveSettings;
+    }
+
+    static void SaveCurrentSettings(void);
 
     static void MarkFrame(void);
 
@@ -253,6 +278,28 @@ public:
 
 private:
     static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);
+
+    static void SetHookKeyEntry(
+        KeyConfiguration& entry,
+        UINT uMessage,
+        DWORD dwPrimaryKey,
+        BOOL bIsChorded = FALSE,
+        DWORD dwMaxKeys = 1,
+        DWORD dwEndKey = 0);
+    static void SetHookKeyEntryFromRegistry(
+        KeyConfiguration& entry,
+        __in HKEY hkSettings,
+        __in_z LPCSTR szValue,
+        UINT uMessage,
+        DWORD dwPrimaryKey,
+        BOOL bIsChorded = FALSE,
+        DWORD dwMaxKeys = 1,
+        DWORD dwEndKey = 0);
+    static void SetHookKeyEntryToRegistry(
+        KeyConfiguration& entry,
+        __in HKEY hkSettings,
+        __in_z LPCSTR szValue,
+        __in_z_opt LPCSTR szFailMessage);
 
     static void LoadSettings(void);
     static HKEY SaveSettings(void);
