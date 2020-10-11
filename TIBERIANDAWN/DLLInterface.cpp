@@ -28,6 +28,7 @@
 
 
 #include <stdio.h>
+#include <shlwapi.h>
 
 #include	"function.h"
 #include "externs.h"
@@ -35,6 +36,8 @@
 #include "Gadget.h"
 #include "defines.h" // VOC_COUNT, VOX_COUNT
 #include "SidebarGlyphx.h"
+
+#include "hook.h"
 
 
 
@@ -311,6 +314,11 @@ class DLLExportClass {
 
         static bool Hooked;
 
+        static HookConfiguration HookConfiguration;
+
+        static HANDLE HookThreadHandle;
+        static DWORD HookThreadId;
+
         /*
         ** Pseudo sidebars for players in multiplayer
         */
@@ -355,6 +363,9 @@ unsigned char DLLExportClass::SpecialKeyFlags[MAX_PLAYERS] = { 0U };
 DynamicVectorClass<char *> DLLExportClass::ModSearchPaths;
 bool DLLExportClass::GameOver = false;
 bool DLLExportClass::Hooked = false;
+HookConfiguration DLLExportClass::HookConfiguration = { 0 };
+HANDLE DLLExportClass::HookThreadHandle = NULL;
+DWORD DLLExportClass::HookThreadId = 0;
 
 /*
 ** Global variables
@@ -1431,6 +1442,116 @@ bool Debug_Write_Shape(const char *file_name, void const * shapefile, int shapen
     return true;
 }
 
+HINSTANCE hHookInstance = NULL;
+InstallHookProc installHookProc = NULL;
+UninstallHookProc uninstallHookProc = NULL;
+GetKeyDataProc getKeyDataProc = NULL;
+
+#pragma optimize("", off)
+
+BOOL LoadHookDll(LPHOOKCONFIGURATION lpHookConfiguration)
+{
+    char szModulePath[MAX_PATH];
+    char szHookPath[MAX_PATH];
+
+    HMODULE hm = NULL;
+
+    if (GetModuleHandleEx(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR)&HookMessageLoop,
+        &hm) == 0)
+    {
+        return FALSE;
+    }
+
+    if (GetModuleFileName(hm, szModulePath, sizeof(szModulePath)) == 0)
+    {
+        return FALSE;
+    }
+
+    PathRemoveFileSpec(szModulePath);
+    PathCombine(szHookPath, szModulePath, "KeyboardHook.dll");
+
+    hHookInstance = ::LoadLibrary(szHookPath);
+    
+    if (hHookInstance == NULL)
+    {
+        return FALSE;
+    }
+
+    installHookProc = (InstallHookProc) ::GetProcAddress(hHookInstance, "InstallHook");
+    uninstallHookProc = (UninstallHookProc) ::GetProcAddress(hHookInstance, "UninstallHook");
+    getKeyDataProc = (GetKeyDataProc) ::GetProcAddress(hHookInstance, "GetKeyData");
+
+    if ((installHookProc == NULL) || (uninstallHookProc == NULL) || (getKeyDataProc == NULL))
+    {
+        return FALSE;
+    }
+
+    return installHookProc(lpHookConfiguration);
+}
+
+BOOL UnloadHookDll(void)
+{
+    if (hHookInstance != NULL)
+    {
+        uninstallHookProc();
+
+        ::FreeLibrary(hHookInstance);
+        hHookInstance = NULL;
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+#pragma optimize("", on)
+
+DWORD WINAPI HookMessageThread(LPVOID lpParameter)
+{
+    MSG msg;
+    BOOL bRet;
+
+    while ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0)
+    {
+        if (bRet == -1)
+        {
+            break;
+        }
+        else
+        {
+            if ((msg.message >= WM_USER) && (getKeyDataProc != NULL))
+            {
+                HOOKKEYDATA hkdData = { 0 };
+                getKeyDataProc(msg.wParam, &hkdData);
+
+                char buffer[256];
+                sprintf_s(
+                    buffer,
+                    "Hook key received: %d, %d, %d --> %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x",
+                    msg.message,
+                    msg.wParam,
+                    hkdData.dwEntries,
+                    hkdData.dwKeys[0],
+                    hkdData.dwKeys[1],
+                    hkdData.dwKeys[2],
+                    hkdData.dwKeys[3],
+                    hkdData.dwKeys[4],
+                    hkdData.dwKeys[5],
+                    hkdData.dwKeys[6],
+                    hkdData.dwKeys[7]);
+
+                ModState::AddModMessage(buffer);
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    return 0;
+}
 
 void HookMessageLoop(void)
 {
@@ -1445,6 +1566,30 @@ void HookMessageLoop(void)
 
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+
+        if ((msg.hwnd == NULL) && (msg.message >= WM_USER) && (getKeyDataProc != NULL))
+        {
+            HOOKKEYDATA hkdData = { 0 };
+            getKeyDataProc(msg.wParam, &hkdData);
+
+            char buffer[256];
+            sprintf_s(
+                buffer,
+                "Hook key received: %d, %d, %d --> %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x",
+                msg.message,
+                msg.wParam,
+                hkdData.dwEntries,
+                hkdData.dwKeys[0],
+                hkdData.dwKeys[1],
+                hkdData.dwKeys[2],
+                hkdData.dwKeys[3],
+                hkdData.dwKeys[4],
+                hkdData.dwKeys[5],
+                hkdData.dwKeys[6],
+                hkdData.dwKeys[7]);
+
+            ModState::AddModMessage(buffer);
+        }
     }
 }
 
@@ -2093,7 +2238,19 @@ void DLLExportClass::Init(void)
 
     CurrentLocalPlayerIndex = 0;
 
+    MSG msg;
+    PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+
     ModState::Initialize();
+
+    HookConfiguration.dwSize = sizeof(HookConfiguration);
+    HookConfiguration.dwEntries = 1;
+    
+    HookConfiguration.kcEntries[0].bIsChorded = TRUE;
+    HookConfiguration.kcEntries[0].dwPrimaryKey = VK_OEM_3;
+    HookConfiguration.kcEntries[0].dwEndKey = VK_OEM_3;
+    HookConfiguration.kcEntries[0].dwMaxKeys = 8;
+    HookConfiguration.kcEntries[0].uMessage = WM_USER + 1;
 
     if (!Hooked && ModState::IsKeyboardHook())
     {
@@ -2105,6 +2262,11 @@ void DLLExportClass::Init(void)
             ModState::AddModMessage("Failed to hook keyboard");
         }
     }
+
+    HookThreadHandle = CreateThread(NULL, 0, HookMessageThread, NULL, 0, &HookThreadId);
+    HookConfiguration.dwMessageThreadId = HookThreadId;
+
+    LoadHookDll(&HookConfiguration);
 }
 
 
@@ -2126,6 +2288,13 @@ void DLLExportClass::Shutdown(void)
     {
         Hooked = false;
         ::UnhookWindowsHookEx(keyboardHook);
+    }
+
+    ::UnloadHookDll();
+
+    if (HookThreadHandle)
+    {
+        ::PostThreadMessage(HookThreadId, WM_QUIT, 0, NULL);
     }
 
     for (int i=0 ; i<ModSearchPaths.Count() ; i++) {

@@ -256,16 +256,14 @@ const char* ModState::GetNextModMessage(void)
 
     EnterCriticalSection(&s_modMessageCritSec);
 
-    if (s_messageSkipFrames || (s_modMessageReadIndex == s_modMessageWriteIndex))
+    if (!s_messageSkipFrames && (s_modMessageReadIndex != s_modMessageWriteIndex))
     {
-        return message;
-    }
-
-    message = s_modMessageBuffers[s_modMessageReadIndex];
-    s_modMessageReadIndex++;
-    if (s_modMessageReadIndex >= ARRAYSIZE(s_modMessageBuffers))
-    {
-        s_modMessageReadIndex = 0;
+        message = s_modMessageBuffers[s_modMessageReadIndex];
+        s_modMessageReadIndex++;
+        if (s_modMessageReadIndex >= ARRAYSIZE(s_modMessageBuffers))
+        {
+            s_modMessageReadIndex = 0;
+        }
     }
 
     LeaveCriticalSection(&s_modMessageCritSec);
