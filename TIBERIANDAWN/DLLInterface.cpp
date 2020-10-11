@@ -2106,9 +2106,6 @@ void DLLExportClass::Init(void)
 
     CurrentLocalPlayerIndex = 0;
 
-    MSG msg;
-    PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
-
     ModState::Initialize();
 
     if (!Hooked && ModState::IsKeyboardHook())
@@ -2150,15 +2147,12 @@ void DLLExportClass::Shutdown(void)
 
         if (HookThreadHandle)
         {
-            BOOL bRes = PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
-            DWORD dwRes = ::GetLastError();
-
+            PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
             CloseHandle(HookThreadHandle);
         }
 
         Hooked = false;
     }
-
 
     for (int i=0 ; i<ModSearchPaths.Count() ; i++) {
         delete [] ModSearchPaths[i];

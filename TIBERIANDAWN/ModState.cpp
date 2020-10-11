@@ -68,7 +68,7 @@ int ModState::s_modMessageReadIndex = 0;
 int ModState::s_modMessageWriteIndex = 0;
 CRITICAL_SECTION ModState::s_modMessageCritSec = { 0 };
 
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2236325862";
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2254499142";
 
 
 void ModState::Initialize(void)
@@ -458,7 +458,7 @@ void ModState::LoadSettings(void)
 
     if (::RegGetValue(hkSettings, NULL, "HarvesterBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
     {
-        int iNewValue = (int)(MAX(0UL, MIN(dwData, 150UL)));
+        int iNewValue = (int)(MAX(10UL, MIN(dwData, 150UL)));
         bool bIsDifferent = (s_harvesterBoost != iNewValue);
         s_harvesterBoost = iNewValue;
 

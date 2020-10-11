@@ -117,8 +117,7 @@ void FinalizeAndSend(void)
     const KeyConfiguration* pConfiguration = pHookData->GetActiveConfiguration();
     int dataIndex = pHookData->FinalizeCurrentData();
 
-    BOOL bResult = ::PostThreadMessage(pHookData->GetMessageThreadId(), pConfiguration->uMessage, dataIndex, NULL);
-    DWORD dwResult = ::GetLastError();
+    ::PostThreadMessage(pHookData->GetMessageThreadId(), pConfiguration->uMessage, dataIndex, NULL);
 
     pHookData->ClearActiveConfiguration();
 }
