@@ -54,12 +54,23 @@ const char* ModState::s_helpBaseText[] = {
     "Decrease Tiberium growth factor",
     "Increase harvester load by 50% of normal",
     "Decrease harvester load by 50% of normal",
-    "Save current settings"
+    "Save current settings",
+    "Spawn infantry",
+    "Spawn vehicle",
+    "Spawn aircraft",
 };
 char ModState::s_modifierKeyNames[3][32] = { 0 };
 char ModState::s_helpMessages[KEYHOOK_MAXHOOKKEYS + 2][MaxModMessageLength] = { 0 };
 
 bool ModState::s_needSaveSettings = false;
+
+InfantryType ModState::s_spawnInfantryType = INFANTRY_NONE;
+UnitType ModState::s_spawnUnitType = UNIT_NONE;
+AircraftType ModState::s_spawnAircraftType = AIRCRAFT_NONE;
+
+InfantryType ModState::s_allowedInfantryTypes[INFANTRY_COUNT] = { INFANTRY_NONE };
+UnitType ModState::s_allowedUnitTypes[UNIT_COUNT] = { UNIT_NONE };
+AircraftType ModState::s_allowedAircraftTypes[AIRCRAFT_COUNT] = { AIRCRAFT_NONE };
 
 int ModState::s_messageSkipFrames = 2;
 char ModState::s_modMessageBuffers[MaxModMessages][MaxModMessageLength] = { 0 };
@@ -202,7 +213,8 @@ bool ModState::DecreaseTiberiumGrowthMultiplier(void)
 
 bool ModState::TriggerNeedShowHelp(void)
 {
-    static char baseKeyName[32] = { 0 };
+    static char primaryKeyName[32] = { 0 };
+    static char endKeyName[32] = { 0 };
 
     if (s_modifierKeyNames[0][0] == 0)
     {
@@ -234,13 +246,15 @@ bool ModState::TriggerNeedShowHelp(void)
             DWORD dwBaseKey = dwPrimaryKey & 0xFF;
             UINT uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
 
-            GetKeyNameText((uiScanCode << 16) | (1 << 25), baseKeyName, ARRAYSIZE(baseKeyName));
+            GetKeyNameText((uiScanCode << 16) | (1 << 25), primaryKeyName, ARRAYSIZE(primaryKeyName));
 
             bool isAlt = (dwPrimaryKey & KEYSTATE_ALT) != 0;
             bool isCtrl = (dwPrimaryKey & KEYSTATE_CTRL) != 0;
             bool isShift = (dwPrimaryKey & KEYSTATE_SHIFT) != 0;
 
-            sprintf_s(s_helpMessages[index + 2], "%s: %s%s%s%s%s%s%s",
+            auto pMessage = s_helpMessages[index + 2];
+
+            sprintf_s(pMessage, MaxModMessageLength, "%s: %s%s%s%s%s%s%s",
                 s_helpBaseText[pKey->uMessage - WM_USER],
                 isCtrl ? s_modifierKeyNames[1] : "",
                 isCtrl ? "+" : "",
@@ -248,7 +262,50 @@ bool ModState::TriggerNeedShowHelp(void)
                 isAlt ? "+" : "",
                 isShift ? s_modifierKeyNames[2] : "",
                 isShift ? "+" : "",
-                baseKeyName);
+                primaryKeyName);
+
+            if (pKey->bIsChorded && (pKey->dwMaxKeys > 1))
+            {
+                DWORD dwFillerKeys = pKey->dwMaxKeys - ((pKey->dwEndKey != 0) ? 2 : 1);
+                for (DWORD dwIndex = 0; dwIndex < dwFillerKeys; dwIndex++)
+                {
+                    strcat_s(pMessage, MaxModMessageLength, ", <key>");
+                }
+
+                if (pKey->dwEndKey != 0)
+                {
+                    strcat_s(pMessage, MaxModMessageLength, ", ");
+
+                    dwBaseKey = pKey->dwEndKey & 0xFF;
+                    uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
+
+                    GetKeyNameText((uiScanCode << 16) | (1 << 25), endKeyName, ARRAYSIZE(endKeyName));
+
+                    isAlt = (pKey->dwEndKey & KEYSTATE_ALT) != 0;
+                    isCtrl = (pKey->dwEndKey & KEYSTATE_CTRL) != 0;
+                    isShift = (pKey->dwEndKey & KEYSTATE_SHIFT) != 0;
+
+                    if (isCtrl)
+                    {
+                        strcat_s(pMessage, MaxModMessageLength, s_modifierKeyNames[1]);
+                        strcat_s(pMessage, MaxModMessageLength, "+");
+                    }
+
+                    if (isAlt)
+                    {
+                        strcat_s(pMessage, MaxModMessageLength, s_modifierKeyNames[0]);
+                        strcat_s(pMessage, MaxModMessageLength, "+");
+                    }
+
+                    if (isShift)
+                    {
+                        strcat_s(pMessage, MaxModMessageLength, s_modifierKeyNames[0]);
+                        strcat_s(pMessage, MaxModMessageLength, "+");
+                    }
+
+                    strcat_s(pMessage, MaxModMessageLength, endKeyName);
+                }
+            }
         }
     }
 
@@ -274,6 +331,144 @@ void ModState::SaveCurrentSettings(void)
     HKEY hkSettings = SaveSettings();
 
     RegCloseKey(hkSettings);
+}
+
+bool ModState::SetSpawnInfantryFromKeyData(HookKeyData& hkdData)
+{
+    if (hkdData.dwEntries != 3)
+    {
+        return false;
+    }
+
+    if (s_spawnInfantryType != INFANTRY_NONE)
+    {
+        return false;
+    }
+
+    if (s_allowedInfantryTypes[0] == INFANTRY_NONE)
+    {
+        int fillIndex = 0;
+
+        for (InfantryType index = INFANTRY_FIRST; index < INFANTRY_COUNT; index++)
+        {
+            InfantryTypeClass const & typeClass = InfantryTypeClass::As_Reference(index);
+
+            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            {
+                continue;
+            }
+
+            s_allowedInfantryTypes[fillIndex] = index;
+            fillIndex++;
+        }
+
+        while (fillIndex < INFANTRY_COUNT)
+        {
+            s_allowedInfantryTypes[fillIndex++] = INFANTRY_NONE;
+        }
+    }
+
+    int index = GetIndexFromKeyData(hkdData);
+
+    if ((1 <= index) && (index <= INFANTRY_COUNT) && (s_allowedInfantryTypes[index - 1] != INFANTRY_NONE))
+    {
+        s_spawnInfantryType = s_allowedInfantryTypes[index - 1];
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
+{
+    if (hkdData.dwEntries != 3)
+    {
+        return false;
+    }
+
+    if (s_spawnUnitType != UNIT_NONE)
+    {
+        return false;
+    }
+
+    if (s_allowedUnitTypes[0] == UNIT_NONE)
+    {
+        int fillIndex = 0;
+
+        for (UnitType index = UNIT_FIRST; index < UNIT_COUNT; index++)
+        {
+            UnitTypeClass const & typeClass = UnitTypeClass::As_Reference(index);
+
+            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            {
+                continue;
+            }
+
+            s_allowedUnitTypes[fillIndex] = index;
+            fillIndex++;
+        }
+
+        while (fillIndex < UNIT_COUNT)
+        {
+            s_allowedUnitTypes[fillIndex++] = UNIT_NONE;
+        }
+    }
+
+    int index = GetIndexFromKeyData(hkdData);
+
+    if ((1 <= index) && (index <= UNIT_COUNT) && (s_allowedUnitTypes[index - 1] != UNIT_NONE))
+    {
+        s_spawnUnitType = s_allowedUnitTypes[index - 1];
+        return true;
+    }
+
+    return false;
+}
+
+bool ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
+{
+    if (hkdData.dwEntries != 3)
+    {
+        return false;
+    }
+
+    if (s_spawnAircraftType != AIRCRAFT_NONE)
+    {
+        return false;
+    }
+
+    if (s_allowedAircraftTypes[0] == AIRCRAFT_NONE)
+    {
+        int fillIndex = 0;
+
+        for (AircraftType index = AIRCRAFT_FIRST; index < AIRCRAFT_COUNT; index++)
+        {
+            AircraftTypeClass const & typeClass = AircraftTypeClass::As_Reference(index);
+
+            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            {
+                continue;
+            }
+
+            s_allowedAircraftTypes[fillIndex] = index;
+            fillIndex++;
+        }
+
+        while (fillIndex < AIRCRAFT_COUNT)
+        {
+            s_allowedAircraftTypes[fillIndex++] = AIRCRAFT_NONE;
+        }
+    }
+
+    int index = GetIndexFromKeyData(hkdData);
+
+    if ((1 <= index) && (index <= AIRCRAFT_COUNT) && (s_allowedAircraftTypes[index - 1] != AIRCRAFT_NONE))
+    {
+        s_spawnAircraftType = s_allowedAircraftTypes[index - 1];
+        return true;
+    }
+
+    return false;
 }
 
 void ModState::MarkFrame(void)
@@ -357,6 +552,29 @@ const ModMessage* ModState::GetNextModMessage(void)
 }
 
 
+int ModState::GetIndexFromKeyData(HookKeyData& hkdData)
+{
+    int result = 0;
+    bool bHaveValue = false;
+
+    for (DWORD dwIndex = 1; dwIndex < hkdData.dwEntries; dwIndex++)
+    {
+        DWORD dwKey = hkdData.dwKeys[dwIndex] & 0xFF;
+
+        if (((DWORD)'0' <= dwKey) && (dwKey <= (DWORD)'9'))
+        {
+            bHaveValue = true;
+            result = (result * 10) + (dwKey - (DWORD)'0');
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return bHaveValue ? result : -1;
+}
+
 void ModState::SetBoolFromRegistry(HKEY hkSettings, LPCSTR szValue, LPCSTR szName, bool* pbValue)
 {
     char buffer[MaxModMessageLength] = { 0 };
@@ -392,11 +610,7 @@ void ModState::SetHookKeyEntryFromRegistry(
     KeyConfiguration& entry,
     HKEY hkSettings,
     LPCSTR szValue,
-    UINT uMessage,
-    DWORD dwPrimaryKey,
-    BOOL bIsChorded,
-    DWORD dwMaxKeys,
-    DWORD dwEndKey)
+    UINT uMessage)
 {
     BYTE abData[sizeof(KeyConfiguration)];
     DWORD dwSize;
@@ -405,10 +619,6 @@ void ModState::SetHookKeyEntryFromRegistry(
     if (::RegGetValue(hkSettings, NULL, szValue, RRF_RT_REG_BINARY, NULL, &abData, &dwSize) == ERROR_SUCCESS)
     {
         SetHookKeyEntry(entry, uMessage, pData->dwPrimaryKey, pData->bIsChorded, pData->dwMaxKeys, pData->dwEndKey);
-    }
-    else
-    {
-        SetHookKeyEntry(entry, uMessage, dwPrimaryKey, bIsChorded, dwMaxKeys, dwEndKey);
     }
 }
 
@@ -426,6 +636,29 @@ void ModState::SetHookKeyEntryToRegistry(
 
 void ModState::LoadSettings(void)
 {
+    s_hookConfiguration.dwSize = sizeof(HookConfiguration);
+    s_hookConfiguration.dwEntries = 19;
+
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[0], WM_USER + 1, VK_OEM_2 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[1], WM_USER + 2, VK_N | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[2], WM_USER + 3, VK_B | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[3], WM_USER + 4, VK_I | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[4], WM_USER + 5, VK_P | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[5], WM_USER + 6, VK_H | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[6], WM_USER + 7, VK_U | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[7], WM_USER + 8, VK_M | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[8], WM_USER + 9, VK_O | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[9], WM_USER + 10, VK_OEM_6 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[10], WM_USER + 11, VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[11], WM_USER + 12, VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[12], WM_USER + 13, VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[13], WM_USER + 14, VK_OEM_PLUS | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[14], WM_USER + 15, VK_OEM_MINUS | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[15], WM_USER + 16, VK_S | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[16], WM_USER + 17, VK_I | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[17], WM_USER + 18, VK_V | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
+    SetHookKeyEntry(s_hookConfiguration.kcEntries[18], WM_USER + 19, VK_A | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
+
     HKEY hkSettings;
     LSTATUS result = ::RegOpenKeyEx(HKEY_CURRENT_USER, SettingsRegPath, 0, KEY_READ | KEY_WRITE, &hkSettings);
 
@@ -516,24 +749,27 @@ void ModState::LoadSettings(void)
     }
 
     s_hookConfiguration.dwSize = sizeof(HookConfiguration);
-    s_hookConfiguration.dwEntries = 16;
+    s_hookConfiguration.dwEntries = 19;
 
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", WM_USER + 1, VK_OEM_2 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", WM_USER + 2, VK_N | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", WM_USER + 3, VK_B | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", WM_USER + 4, VK_I | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", WM_USER + 5, VK_P | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", WM_USER + 6, VK_H | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", WM_USER + 7, VK_U | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", WM_USER + 8, VK_M | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", WM_USER + 9, VK_O | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", WM_USER + 10, VK_OEM_6 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", WM_USER + 11, VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", WM_USER + 12, VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", WM_USER + 13, VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", WM_USER + 14, VK_OEM_PLUS | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", WM_USER + 15, VK_OEM_MINUS | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", WM_USER + 16, VK_S | KEYSTATE_ALT | KEYSTATE_CTRL);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", WM_USER + 1);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", WM_USER + 2);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", WM_USER + 3);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", WM_USER + 4);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", WM_USER + 5);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", WM_USER + 6);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", WM_USER + 7);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", WM_USER + 8);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", WM_USER + 9);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", WM_USER + 10);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", WM_USER + 11);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", WM_USER + 12);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", WM_USER + 13);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", WM_USER + 14);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", WM_USER + 15);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", WM_USER + 16);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", WM_USER + 17);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", WM_USER + 18);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnVehicle", WM_USER + 19);
 
     RegCloseKey(hkSettings);
 }
@@ -634,7 +870,9 @@ HKEY ModState::SaveSettings(void)
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", "Failed to save increase harvester boost key configuration.");
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", "Failed to save decrease harvester boost key configuration.");
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", "Failed to save save settings key configuration.");
-
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", "Failed to save spawn infantry key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", "Failed to save spawn vehicle key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnVehicle", "Failed to save spawn aircraft key configuration.");
 
     return hkSettings;
 }

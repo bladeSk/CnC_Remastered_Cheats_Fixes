@@ -1521,6 +1521,7 @@ DWORD WINAPI HookMessageThread(LPVOID lpParameter)
         else
         {
             bool mode = false;
+            HookKeyData hkdData = { 0 };
 
             switch (msg.message)
             {
@@ -1620,6 +1621,39 @@ DWORD WINAPI HookMessageThread(LPVOID lpParameter)
                 ModState::TriggerNeedSaveSettings();
                 sprintf_s(buffer, "Saving current settings");
                 ModState::AddModMessage(buffer);
+                break;
+
+            case WM_USER + 17:
+                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
+                {
+                    if (ModState::SetSpawnInfantryFromKeyData(hkdData))
+                    {
+                        sprintf_s(buffer, "Spawning infantry");
+                        ModState::AddModMessage(buffer);
+                    }
+                }
+                break;
+
+            case WM_USER + 18:
+                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
+                {
+                    if (ModState::SetSpawnUnitFromKeyData(hkdData))
+                    {
+                        sprintf_s(buffer, "Spawning vehicle");
+                        ModState::AddModMessage(buffer);
+                    }
+                }
+                break;
+
+            case WM_USER + 19:
+                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
+                {
+                    if (ModState::SetSpawnAircraftFromKeyData(hkdData))
+                    {
+                        sprintf_s(buffer, "Spawning aircraft");
+                        ModState::AddModMessage(buffer);
+                    }
+                }
                 break;
             }
 
@@ -6004,6 +6038,36 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
         if (ModState::NeedSaveSettings())
         {
             ModState::SaveCurrentSettings();
+        }
+
+        InfantryType infantryType = INFANTRY_NONE;
+        UnitType unitType = UNIT_NONE;
+        AircraftType aircraftType = AIRCRAFT_NONE;
+        
+        if ((infantryType = ModState::GetSpawnInfantryType()) != INFANTRY_NONE)
+        {
+            InfantryClass* inf = new InfantryClass(infantryType, PlayerPtr->Class->House);
+            if (inf)
+            {
+                inf->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
+            }
+        }
+        else if ((unitType = ModState::GetSpawnUnitType()) != UNIT_NONE)
+        {
+            UnitClass* unit = new UnitClass(unitType, PlayerPtr->Class->House);
+            if (unit)
+            {
+                unit->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
+            }
+        }
+        else if ((aircraftType = ModState::GetSpawnAircraftType()) != AIRCRAFT_NONE)
+        {
+            AircraftClass* air = new AircraftClass(aircraftType, PlayerPtr->Class->House);
+            if (air)
+            {
+                air->Altitude = 0;
+                air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
+            }
         }
     }
 

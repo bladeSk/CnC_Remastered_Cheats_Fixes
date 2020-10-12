@@ -56,6 +56,14 @@ private:
 
     static bool s_needSaveSettings;
 
+    static InfantryType s_spawnInfantryType;
+    static UnitType s_spawnUnitType;
+    static AircraftType s_spawnAircraftType;
+
+    static InfantryType s_allowedInfantryTypes[INFANTRY_COUNT];
+    static UnitType s_allowedUnitTypes[UNIT_COUNT];
+    static AircraftType s_allowedAircraftTypes[AIRCRAFT_COUNT];
+
     static int s_messageSkipFrames;
     static char s_modMessageBuffers[MaxModMessages][MaxModMessageLength];
     static ModMessage s_modMessages[MaxModMessages];
@@ -270,6 +278,34 @@ public:
 
     static void SaveCurrentSettings(void);
 
+    static bool SetSpawnInfantryFromKeyData(HookKeyData& hkdData);
+    static bool SetSpawnUnitFromKeyData(HookKeyData& hkdData);
+    static bool SetSpawnAircraftFromKeyData(HookKeyData& hkData);
+
+    static InfantryType GetSpawnInfantryType(void)
+    {
+        InfantryType result = s_spawnInfantryType;
+        s_spawnInfantryType = INFANTRY_NONE;
+        
+        return result;
+    }
+
+    static UnitType GetSpawnUnitType(void)
+    {
+        UnitType result = s_spawnUnitType;
+        s_spawnUnitType = UNIT_NONE;
+
+        return result;
+    }
+
+    static AircraftType GetSpawnAircraftType(void)
+    {
+        AircraftType result = s_spawnAircraftType;
+        s_spawnAircraftType = AIRCRAFT_NONE;
+
+        return result;
+    }
+
     static void MarkFrame(void);
 
     static void AddModMessage(const char* message, int timeout = 0);
@@ -277,6 +313,8 @@ public:
     static const ModMessage* GetNextModMessage(void);
 
 private:
+    static int GetIndexFromKeyData(HookKeyData& hkdData);
+
     static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);
 
     static void SetHookKeyEntry(
@@ -290,11 +328,7 @@ private:
         KeyConfiguration& entry,
         __in HKEY hkSettings,
         __in_z LPCSTR szValue,
-        UINT uMessage,
-        DWORD dwPrimaryKey,
-        BOOL bIsChorded = FALSE,
-        DWORD dwMaxKeys = 1,
-        DWORD dwEndKey = 0);
+        UINT uMessage);
     static void SetHookKeyEntryToRegistry(
         KeyConfiguration& entry,
         __in HKEY hkSettings,
