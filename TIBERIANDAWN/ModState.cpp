@@ -769,7 +769,7 @@ void ModState::LoadSettings(void)
     SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", WM_USER + 16);
     SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", WM_USER + 17);
     SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", WM_USER + 18);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnVehicle", WM_USER + 19);
+    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnAircraft", WM_USER + 19);
 
     RegCloseKey(hkSettings);
 }
@@ -872,7 +872,7 @@ HKEY ModState::SaveSettings(void)
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", "Failed to save save settings key configuration.");
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", "Failed to save spawn infantry key configuration.");
     SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", "Failed to save spawn vehicle key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnVehicle", "Failed to save spawn aircraft key configuration.");
+    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnAircraft", "Failed to save spawn aircraft key configuration.");
 
     return hkSettings;
 }
