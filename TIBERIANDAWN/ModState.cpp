@@ -1,64 +1,165 @@
-//
-// Copyright 2020 Electronic Arts Inc.
-//
-// TiberianDawn.DLL and RedAlert.dll and corresponding source code is free 
-// software: you can redistribute it and/or modify it under the terms of 
-// the GNU General Public License as published by the Free Software Foundation, 
-// either version 3 of the License, or (at your option) any later version.
-
-// TiberianDawn.DLL and RedAlert.dll and corresponding source code is distributed 
-// in the hope that it will be useful, but with permitted additional restrictions 
-// under Section 7 of the GPL. See the GNU General Public License in LICENSE.TXT 
-// distributed with this program. You should have received a copy of the 
-// GNU General Public License along with permitted additional restrictions 
-// with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
-
 #include "function.h"
 
-static const char* StartupMessage = "Mod started.\n";
+#ifdef MOD_BETA
+static const DWORD ModVersion = 0x02060000;
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2254499142";
 
-bool ModState::s_isKeyboardHook = true;
-bool ModState::s_isNoDamage = false;
-bool ModState::s_needHealing = false;
-bool ModState::s_isUnlockBuildOptions = false;
-bool ModState::s_needUnlockBuildOptions = false;
-bool ModState::s_isInstantBuild = false;
-bool ModState::s_isInstantSuperweapons = false;
-bool ModState::s_isDismissShroud = false;
-bool ModState::s_isUnlimitedAmmo = false;
+static const char* StartupMessage = "Tiberian Dawn Cheat Mod (BETA) started.\n";
+#else
+static const DWORD ModVersion = 0x03000000;
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2236325862";
 
-int ModState::s_harvesterBoost = 100;
-int ModState::s_movementBoost = 10;
+static const char* StartupMessage = "Tiberian Dawn Cheat Mod started.\n";
+#endif
 
-int ModState::s_tiberiumGrowthMultiplier = 1;
+
+
+constexpr auto MaxUnitLevel = 99;
+constexpr auto MaxUnitScenario = 99;
+
+DWordSetting<SettingInfo> ModState::s_lastLoadedVersion("LastLoadedVersion", { "Last loaded version" }, ModVersion);
+
+BooleanSetting<SettingInfo> ModState::s_isKeyboardHook("EnableKeyboardHook", { "Keyboard hook" }, true);
+BooleanSetting<SettingInfo> ModState::s_isNoDamage("EnableNoDamage", { "No damage mode" }, false);
+BooleanSetting<SettingInfo> ModState::s_needHealing("EnableNoDamage", { "No damage mode" }, false, false, true, false);
+BooleanSetting<SettingInfo> ModState::s_isUnlockBuildOptions("EnableUnlockBuildOptions", { "Unlock build mode" }, false);
+BooleanSetting<SettingInfo> ModState::s_needUnlockBuildOptions("EnableUnlockBuildOptions", { "Unlock build mode" }, false, false, true, false);
+BooleanSetting<SettingInfo> ModState::s_isInstantBuild("EnableInstantBuild", { "Instant build mode" }, false);
+BooleanSetting<SettingInfo> ModState::s_isInstantSuperweapons("EnableInstantSuperweapons", { "Instant superweapons mode" }, false);
+BooleanSetting<SettingInfo> ModState::s_isDismissShroud("EnableDismissShroud", { "Dismiss shroud mode" }, false);
+BooleanSetting<SettingInfo> ModState::s_isUnlimitedAmmo("EnableUnlimitedAmmo", { "Unlimited ammo for aircrafts" }, false);
+
+const BooleanSetting<SettingInfo>* ModState::s_booleanSettings[] =
+{
+    &ModState::s_isKeyboardHook,
+    &ModState::s_isNoDamage,
+    &ModState::s_isUnlockBuildOptions,
+    &ModState::s_isInstantBuild,
+    &ModState::s_isInstantSuperweapons,
+    &ModState::s_isDismissShroud,
+    &ModState::s_isUnlimitedAmmo,
+};
+
+DWordSetting<SettingInfo> ModState::s_harvesterBoost("HarvesterBoost", { "Harvester boost" }, 100);
+DWordSetting<SettingInfo> ModState::s_movementBoost("MovementBoost", { "Movement boost" }, 10);
+
+DWordSetting<SettingInfo> ModState::s_tiberiumGrowthMultiplier("TiberiumGrowthMultiplier", { "Tiberium growth multiplier" }, 1);
+
+DWordSetting<SettingInfo> ModState::s_initialCreditBoost("InitialCreditBoost", { "Initial credit boost" }, 0);
+DWordSetting<SettingInfo> ModState::s_initialPowerBoost("InitialPowerBoost", { "Initial power boost" }, 0);
+
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyHelpKeySetting(
+    "KeyHelp",
+    { "Show help" },
+    { VK_OEM_2 | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 1 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleNoDamage(
+    "KeyToggleNoDamage",
+    { "Toggle no damage" },
+    { VK_N | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 2 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleUnlockBuildOptions(
+    "KeyToggleUnlockBuildOptions",
+    { "Enable unlock build mode (cannot disable)" },
+    { VK_B | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 3 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleInstantBuild(
+    "KeyToggleInstantBuild",
+    { "Toggle instant build for buildings and units" },
+    { VK_I | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 4 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleInstantSuperweapons(
+    "KeyToggleInstantSuperweapons",
+    { "Toggle instant superweapon charging" },
+    { VK_P | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 5 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleDismissShroud(
+    "KeyToggleDismissShroud",
+    { "Toggle dismiss shroud" },
+    { VK_H | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 6 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyToggleUnlimitedAmmo(
+    "KeyToggleUnlimitedAmmo",
+    { "Toggle unlimited ammo for aircrafts" },
+    { VK_U | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 7 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyCreditBoost(
+    "KeyCreditBoost",
+    { "Boost credits" },
+    { VK_M | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 8 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyPowerBoost(
+    "KeyPowerBoost",
+    { "Boost power" },
+    { VK_O | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 9 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyIncreaseMovementBoost(
+    "KeyIncreaseMovementBoost",
+    { "Increase movement boost by 50% of normal" },
+    { VK_OEM_6 | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 10 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseMovementBoost(
+    "KeyDecreaseMovementBoost",
+    { "Decrease movement boost by 50% of normal" },
+    { VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 11 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyIncreaseTiberiumGrowth(
+    "KeyIncreaseTiberiumGrowth",
+    { "Increase Tiberium growth factor" },
+    { VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 12 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseTiberiumGrowth(
+    "KeyDecreaseTiberiumGrowth",
+    { "Decrease Tiberium growth factor" },
+    { VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 13 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseHarvesterBoost(
+    "KeyIncreaseHarvesterBoost",
+    { "Increase harvester load by 50% of normal" },
+    { VK_OEM_PLUS | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 14 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyIncreaseHarvesterBoost(
+    "KeyDecreaseHarvesterBoost",
+    { "Decrease harvester load by 50% of normal" },
+    { VK_OEM_MINUS | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 15 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keySaveSettings(
+    "KeySaveSettings",
+    { "Save current settings" },
+    { VK_S | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 16 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keySpawnInfantry(
+    "KeySpawnInfantry",
+    { "Spawn infantry" },
+    { VK_I | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3, 0, WM_USER + 17 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keySpawnVehicle(
+    "KeySpawnVehicle",
+    { "Spawn vehicle" },
+    { VK_V | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3, 0, WM_USER + 18 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keySpawnAircraft(
+    "KeySpawnAircraft",
+    { "Spawn aircraft" },
+    { VK_A | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3, 0, WM_USER + 19 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyCapture(
+    "KeyCapture",
+    { "Capture units and buildings" },
+    { VK_C | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 2, 0, WM_USER + 20 });
+
+BinarySetting<KeyConfiguration, SettingInfo>* ModState::s_keyBindings[] =
+{
+    &ModState::s_keyHelpKeySetting,
+    &ModState::s_keyToggleNoDamage,
+    &ModState::s_keyToggleUnlockBuildOptions,
+    &ModState::s_keyToggleInstantBuild,
+    &ModState::s_keyToggleInstantSuperweapons,
+    &ModState::s_keyToggleDismissShroud,
+    &ModState::s_keyToggleUnlimitedAmmo,
+    &ModState::s_keyCreditBoost,
+    &ModState::s_keyPowerBoost,
+    &ModState::s_keyIncreaseMovementBoost,
+    &ModState::s_keyDecreaseMovementBoost,
+    &ModState::s_keyIncreaseTiberiumGrowth,
+    &ModState::s_keyDecreaseTiberiumGrowth,
+    &ModState::s_keyDecreaseHarvesterBoost,
+    &ModState::s_keyIncreaseHarvesterBoost,
+    &ModState::s_keySaveSettings,
+    &ModState::s_keySpawnInfantry,
+    &ModState::s_keySpawnVehicle,
+    &ModState::s_keySpawnAircraft,
+    &ModState::s_keyCapture,
+};
+
+Settings<SettingInfo> ModState::s_settings;
 
 volatile long ModState::s_creditBoostAmount = 0;
 volatile long ModState::s_powerBoostAmount = 0;
 
 HookConfiguration ModState::s_hookConfiguration = { 0 };
 
-const char* ModState::s_helpBaseText[] = {
-    "",
-    "Show help",
-    "Toggle no damage",
-    "Enable unlock build mode (cannot disable)",
-    "Toggle instant build for buildings and units",
-    "Toggle instant superweapon charging",
-    "Toggle dismiss shroud",
-    "Toggle unlimited ammo for aircrafts",
-    "Boost credits",
-    "Boost power",
-    "Increase movement boost by 50% of normal",
-    "Decrease movement boost by 50% of normal",
-    "Increase Tiberium growth factor",
-    "Decrease Tiberium growth factor",
-    "Increase harvester load by 50% of normal",
-    "Decrease harvester load by 50% of normal",
-    "Save current settings",
-    "Spawn infantry",
-    "Spawn vehicle",
-    "Spawn aircraft",
-};
 char ModState::s_modifierKeyNames[3][32] = { 0 };
 char ModState::s_helpMessages[KEYHOOK_MAXHOOKKEYS + 2][MaxModMessageLength] = { 0 };
 
@@ -72,14 +173,14 @@ InfantryType ModState::s_allowedInfantryTypes[INFANTRY_COUNT] = { INFANTRY_NONE 
 UnitType ModState::s_allowedUnitTypes[UNIT_COUNT] = { UNIT_NONE };
 AircraftType ModState::s_allowedAircraftTypes[AIRCRAFT_COUNT] = { AIRCRAFT_NONE };
 
+HousesType ModState::s_captureHouseType = HOUSE_NONE;
+
 int ModState::s_messageSkipFrames = 2;
 char ModState::s_modMessageBuffers[MaxModMessages][MaxModMessageLength] = { 0 };
 ModMessage ModState::s_modMessages[MaxModMessages] = { 0 };
 int ModState::s_modMessageReadIndex = 0;
 int ModState::s_modMessageWriteIndex = 0;
 CRITICAL_SECTION ModState::s_modMessageCritSec = { 0 };
-
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2254499142";
 
 
 void ModState::Initialize(void)
@@ -94,62 +195,100 @@ void ModState::Initialize(void)
 
     ModState::AddModMessage(StartupMessage);
 
+    ModState::s_settings.Add(s_lastLoadedVersion);
+
+    ModState::s_settings.Add(s_isKeyboardHook);
+    ModState::s_settings.Add(s_isNoDamage);
+    ModState::s_settings.Add(s_needHealing);
+    ModState::s_settings.Add(s_isUnlockBuildOptions);
+    ModState::s_settings.Add(s_needUnlockBuildOptions);
+    ModState::s_settings.Add(s_isInstantBuild);
+    ModState::s_settings.Add(s_isInstantSuperweapons);
+    ModState::s_settings.Add(s_isDismissShroud);
+    ModState::s_settings.Add(s_isUnlimitedAmmo);
+
+    ModState::s_settings.Add(s_harvesterBoost);
+    ModState::s_settings.Add(s_movementBoost);
+
+    ModState::s_settings.Add(s_tiberiumGrowthMultiplier);
+
+    ModState::s_settings.Add(s_keyHelpKeySetting);
+    ModState::s_settings.Add(s_keyToggleNoDamage);
+    ModState::s_settings.Add(s_keyToggleUnlockBuildOptions);
+    ModState::s_settings.Add(s_keyToggleInstantBuild);
+    ModState::s_settings.Add(s_keyToggleInstantSuperweapons);
+    ModState::s_settings.Add(s_keyToggleDismissShroud);
+    ModState::s_settings.Add(s_keyToggleUnlimitedAmmo);
+    ModState::s_settings.Add(s_keyCreditBoost);
+    ModState::s_settings.Add(s_keyPowerBoost);
+    ModState::s_settings.Add(s_keyIncreaseMovementBoost);
+    ModState::s_settings.Add(s_keyDecreaseMovementBoost);
+    ModState::s_settings.Add(s_keyIncreaseTiberiumGrowth);
+    ModState::s_settings.Add(s_keyDecreaseTiberiumGrowth);
+    ModState::s_settings.Add(s_keyDecreaseHarvesterBoost);
+    ModState::s_settings.Add(s_keyIncreaseHarvesterBoost);
+    ModState::s_settings.Add(s_keySaveSettings);
+    ModState::s_settings.Add(s_keySpawnInfantry);
+    ModState::s_settings.Add(s_keySpawnVehicle);
+    ModState::s_settings.Add(s_keySpawnAircraft);
+    ModState::s_settings.Add(s_keyCapture);
+
     ModState::LoadSettings();
 }
 
 
 bool ModState::ToggleNoDamage(void)
 {
-    s_isNoDamage = !s_isNoDamage;
-    if (s_isNoDamage)
+    *s_isNoDamage = !(*s_isNoDamage);
+    if (*s_isNoDamage)
     {
-        s_needHealing = true;
+        *s_needHealing = true;
     }
 
-    return s_isNoDamage;
+    return *s_isNoDamage;
 }
 
 
 bool ModState::ToggleUnlockBuildOptions(void)
 {
-    if (!s_isUnlockBuildOptions)
+    if (!(*s_isUnlockBuildOptions))
     {
-        s_isUnlockBuildOptions = !s_isUnlockBuildOptions;
-        s_needUnlockBuildOptions = true;
+        *s_isUnlockBuildOptions = !(*s_isUnlockBuildOptions);
+        *s_needUnlockBuildOptions = true;
     }
 
-    return s_isUnlockBuildOptions;
+    return *s_isUnlockBuildOptions;
 }
 
 bool ModState::ToggleInstantBuild(void)
 {
-    s_isInstantBuild = !s_isInstantBuild;
-    return s_isInstantBuild;
+    *s_isInstantBuild = !(*s_isInstantBuild);
+    return *s_isInstantBuild;
 }
 
 bool ModState::ToggleInstantSuperweapons(void)
 {
-    s_isInstantSuperweapons = !s_isInstantSuperweapons;
-    return s_isInstantSuperweapons;
+    *s_isInstantSuperweapons = !(*s_isInstantSuperweapons);
+    return *s_isInstantSuperweapons;
 }
 
 bool ModState::ToggleDismissShroud(void)
 {
-    s_isDismissShroud = !s_isDismissShroud;
-    return s_isDismissShroud;
+    *s_isDismissShroud = !(*s_isDismissShroud);
+    return *s_isDismissShroud;
 }
 
 bool ModState::ToggleUnlimitedAmmo(void)
 {
-    s_isUnlimitedAmmo = !s_isUnlimitedAmmo;
-    return s_isUnlimitedAmmo;
+    *s_isUnlimitedAmmo = !(*s_isUnlimitedAmmo);
+    return *s_isUnlimitedAmmo;
 }
 
 bool ModState::IncreaseHarvesterBoost(void)
 {
-    if (s_harvesterBoost < 150)
+    if (*s_harvesterBoost < 150)
     {
-        s_harvesterBoost += 5;
+        *s_harvesterBoost += 5;
         return true;
     }
 
@@ -158,9 +297,9 @@ bool ModState::IncreaseHarvesterBoost(void)
 
 bool ModState::DecreaseHarvesterBoost(void)
 {
-    if (s_harvesterBoost > 10)
+    if (*s_harvesterBoost > 10)
     {
-        s_harvesterBoost -= 5;
+        *s_harvesterBoost -= 5;
         return true;
     }
 
@@ -169,9 +308,9 @@ bool ModState::DecreaseHarvesterBoost(void)
 
 bool ModState::IncreaseMovementBoost(void)
 {
-    if (s_movementBoost < 50)
+    if (*s_movementBoost < 50)
     {
-        s_movementBoost += 5;
+        *s_movementBoost += 5;
         return true;
     }
 
@@ -180,9 +319,9 @@ bool ModState::IncreaseMovementBoost(void)
 
 bool ModState::DecreaseMovementBoost(void)
 {
-    if (s_movementBoost > 5)
+    if (*s_movementBoost > 5)
     {
-        s_movementBoost -= 5;
+        *s_movementBoost -= 5;
         return true;
     }
 
@@ -191,9 +330,9 @@ bool ModState::DecreaseMovementBoost(void)
 
 bool ModState::IncreaseTiberiumGrowthMultiplier(void)
 {
-    if (s_tiberiumGrowthMultiplier < 50)
+    if (*s_tiberiumGrowthMultiplier < 50)
     {
-        s_tiberiumGrowthMultiplier++;
+        (*s_tiberiumGrowthMultiplier)++;
         return true;
     }
 
@@ -202,9 +341,9 @@ bool ModState::IncreaseTiberiumGrowthMultiplier(void)
 
 bool ModState::DecreaseTiberiumGrowthMultiplier(void)
 {
-    if (s_tiberiumGrowthMultiplier > 1)
+    if (*s_tiberiumGrowthMultiplier > 1)
     {
-        s_tiberiumGrowthMultiplier--;
+        (*s_tiberiumGrowthMultiplier)--;
         return true;
     }
 
@@ -239,10 +378,10 @@ bool ModState::TriggerNeedShowHelp(void)
         sprintf_s(s_helpMessages[0], "Tiberian Dawn Cheat Mod Help:\n");
         sprintf_s(s_helpMessages[1], " \n");
 
-        for (int index = 0; index < (int)(s_hookConfiguration.dwEntries); index++)
+        for (int index = 0; index < ARRAYSIZE(s_keyBindings); index++)
         {
-            KeyConfiguration* pKey = &(s_hookConfiguration.kcEntries[index]);
-            DWORD dwPrimaryKey = pKey->dwPrimaryKey;
+            KeyConfiguration& key = *(*s_keyBindings[index]);
+            DWORD dwPrimaryKey = key.dwPrimaryKey;
             DWORD dwBaseKey = dwPrimaryKey & 0xFF;
             UINT uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
 
@@ -255,7 +394,7 @@ bool ModState::TriggerNeedShowHelp(void)
             auto pMessage = s_helpMessages[index + 2];
 
             sprintf_s(pMessage, MaxModMessageLength, "%s: %s%s%s%s%s%s%s",
-                s_helpBaseText[pKey->uMessage - WM_USER],
+                s_keyBindings[index]->GetPropertyBag()._szDescription,
                 isCtrl ? s_modifierKeyNames[1] : "",
                 isCtrl ? "+" : "",
                 isAlt ? s_modifierKeyNames[0] : "",
@@ -264,26 +403,26 @@ bool ModState::TriggerNeedShowHelp(void)
                 isShift ? "+" : "",
                 primaryKeyName);
 
-            if (pKey->bIsChorded && (pKey->dwMaxKeys > 1))
+            if (key.bIsChorded && (key.dwMaxKeys > 1))
             {
-                DWORD dwFillerKeys = pKey->dwMaxKeys - ((pKey->dwEndKey != 0) ? 2 : 1);
+                DWORD dwFillerKeys = key.dwMaxKeys - ((key.dwEndKey != 0) ? 2 : 1);
                 for (DWORD dwIndex = 0; dwIndex < dwFillerKeys; dwIndex++)
                 {
                     strcat_s(pMessage, MaxModMessageLength, ", <key>");
                 }
 
-                if (pKey->dwEndKey != 0)
+                if (key.dwEndKey != 0)
                 {
                     strcat_s(pMessage, MaxModMessageLength, ", ");
 
-                    dwBaseKey = pKey->dwEndKey & 0xFF;
+                    dwBaseKey = key.dwEndKey & 0xFF;
                     uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
 
                     GetKeyNameText((uiScanCode << 16) | (1 << 25), endKeyName, ARRAYSIZE(endKeyName));
 
-                    isAlt = (pKey->dwEndKey & KEYSTATE_ALT) != 0;
-                    isCtrl = (pKey->dwEndKey & KEYSTATE_CTRL) != 0;
-                    isShift = (pKey->dwEndKey & KEYSTATE_SHIFT) != 0;
+                    isAlt = (key.dwEndKey & KEYSTATE_ALT) != 0;
+                    isCtrl = (key.dwEndKey & KEYSTATE_CTRL) != 0;
+                    isShift = (key.dwEndKey & KEYSTATE_SHIFT) != 0;
 
                     if (isCtrl)
                     {
@@ -328,21 +467,19 @@ void ModState::SaveCurrentSettings(void)
 {
     s_needSaveSettings = false;
 
-    HKEY hkSettings = SaveSettings();
-
-    RegCloseKey(hkSettings);
+    SaveSettings();
 }
 
-bool ModState::SetSpawnInfantryFromKeyData(HookKeyData& hkdData)
+InfantryType ModState::SetSpawnInfantryFromKeyData(HookKeyData& hkdData)
 {
     if (hkdData.dwEntries != 3)
     {
-        return false;
+        return INFANTRY_NONE;
     }
 
     if (s_spawnInfantryType != INFANTRY_NONE)
     {
-        return false;
+        return INFANTRY_NONE;
     }
 
     if (s_allowedInfantryTypes[0] == INFANTRY_NONE)
@@ -353,7 +490,7 @@ bool ModState::SetSpawnInfantryFromKeyData(HookKeyData& hkdData)
         {
             InfantryTypeClass const & typeClass = InfantryTypeClass::As_Reference(index);
 
-            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            if (!IsSpawnable(&typeClass))
             {
                 continue;
             }
@@ -370,25 +507,23 @@ bool ModState::SetSpawnInfantryFromKeyData(HookKeyData& hkdData)
 
     int index = GetIndexFromKeyData(hkdData);
 
-    if ((1 <= index) && (index <= INFANTRY_COUNT) && (s_allowedInfantryTypes[index - 1] != INFANTRY_NONE))
-    {
-        s_spawnInfantryType = s_allowedInfantryTypes[index - 1];
-        return true;
-    }
+    s_spawnInfantryType = (1 <= index) && (index <= INFANTRY_COUNT) && (s_allowedInfantryTypes[index - 1] != INFANTRY_NONE) ?
+        s_allowedInfantryTypes[index - 1] :
+        INFANTRY_COUNT;
 
-    return false;
+    return s_spawnInfantryType;
 }
 
-bool ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
+UnitType ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
 {
     if (hkdData.dwEntries != 3)
     {
-        return false;
+        return UNIT_NONE;
     }
 
     if (s_spawnUnitType != UNIT_NONE)
     {
-        return false;
+        return UNIT_NONE;
     }
 
     if (s_allowedUnitTypes[0] == UNIT_NONE)
@@ -399,7 +534,7 @@ bool ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
         {
             UnitTypeClass const & typeClass = UnitTypeClass::As_Reference(index);
 
-            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            if (!IsSpawnable(&typeClass) && (typeClass.Type != UNIT_VICE))
             {
                 continue;
             }
@@ -416,25 +551,23 @@ bool ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
 
     int index = GetIndexFromKeyData(hkdData);
 
-    if ((1 <= index) && (index <= UNIT_COUNT) && (s_allowedUnitTypes[index - 1] != UNIT_NONE))
-    {
-        s_spawnUnitType = s_allowedUnitTypes[index - 1];
-        return true;
-    }
+    s_spawnUnitType = (1 <= index) && (index <= UNIT_COUNT) && (s_allowedUnitTypes[index - 1] != UNIT_NONE) ?
+        s_allowedUnitTypes[index - 1] :
+        UNIT_COUNT;
 
-    return false;
+    return s_spawnUnitType;
 }
 
-bool ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
+AircraftType ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
 {
     if (hkdData.dwEntries != 3)
     {
-        return false;
+        return AIRCRAFT_NONE;
     }
 
     if (s_spawnAircraftType != AIRCRAFT_NONE)
     {
-        return false;
+        return AIRCRAFT_NONE;
     }
 
     if (s_allowedAircraftTypes[0] == AIRCRAFT_NONE)
@@ -445,7 +578,7 @@ bool ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
         {
             AircraftTypeClass const & typeClass = AircraftTypeClass::As_Reference(index);
 
-            if ((typeClass.Level > 98) || (typeClass.Scenario > 98))
+            if (!IsSpawnable(&typeClass))
             {
                 continue;
             }
@@ -462,13 +595,58 @@ bool ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
 
     int index = GetIndexFromKeyData(hkdData);
 
-    if ((1 <= index) && (index <= AIRCRAFT_COUNT) && (s_allowedAircraftTypes[index - 1] != AIRCRAFT_NONE))
+    s_spawnAircraftType = (1 <= index) && (index <= AIRCRAFT_COUNT) && (s_allowedAircraftTypes[index - 1] != AIRCRAFT_NONE) ?
+        s_allowedAircraftTypes[index - 1] :
+        AIRCRAFT_COUNT;
+
+    return s_spawnAircraftType;
+}
+
+HousesType ModState::SetCaptureHouseFromKeyData(HookKeyData& hkdData)
+{
+    if (hkdData.dwEntries != 2)
     {
-        s_spawnAircraftType = s_allowedAircraftTypes[index - 1];
-        return true;
+        return HOUSE_NONE;
     }
 
-    return false;
+    if (s_captureHouseType != HOUSE_NONE)
+    {
+        return HOUSE_NONE;
+    }
+
+    int index = GetIndexFromKeyData(hkdData);
+    if (index == -1)
+    {
+        index = (PlayerPtr) ? PlayerPtr->Class->House : HOUSE_NONE;
+    }
+    else
+    {
+        index--;
+    }
+
+    if (index != -1)
+    {
+        bool bFound = false;
+
+        for (int houseIndex = 0; houseIndex < Houses.Count(); houseIndex++)
+        {
+            const HouseClass* pHouse = Houses.Ptr(houseIndex);
+            if (pHouse->Class->House == index)
+            {
+                bFound = true;
+                break;
+            }
+        }
+
+        if (!bFound)
+        {
+            index = HOUSE_NONE;
+        }
+    }
+
+    s_captureHouseType = (HousesType)index;
+
+    return (HousesType)(index);
 }
 
 void ModState::MarkFrame(void)
@@ -552,6 +730,14 @@ const ModMessage* ModState::GetNextModMessage(void)
 }
 
 
+bool ModState::IsSpawnable(const TechnoTypeClass* type)
+{
+    return (type->Level <= MaxUnitLevel) &&
+           (type->Scenario <= MaxUnitScenario) &&
+           ((type->Pre != STRUCTF_NONE) || !(type->IsInsignificant)) &&
+           (type->IsSelectable);
+}
+
 int ModState::GetIndexFromKeyData(HookKeyData& hkdData)
 {
     int result = 0;
@@ -575,173 +761,110 @@ int ModState::GetIndexFromKeyData(HookKeyData& hkdData)
     return bHaveValue ? result : -1;
 }
 
-void ModState::SetBoolFromRegistry(HKEY hkSettings, LPCSTR szValue, LPCSTR szName, bool* pbValue)
-{
-    char buffer[MaxModMessageLength] = { 0 };
-
-    DWORD dwData;
-    DWORD dwSize;
-
-    if (::RegGetValue(hkSettings, NULL, szValue, RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
-    {
-        bool bNewValue = (dwData != 0);
-        bool bDifferent = (*pbValue != bNewValue);
-        
-        *pbValue = bNewValue;
-
-        if (bDifferent)
-        {
-            sprintf_s(buffer, "%s: %s", szName, bNewValue ? "enabled" : "disabled");
-            ModState::AddModMessage(buffer);
-        }
-    }
-}
-
-void ModState::SetHookKeyEntry(KeyConfiguration& entry, UINT uMessage, DWORD dwPrimaryKey, BOOL bIsChorded, DWORD dwMaxKeys, DWORD dwEndKey)
-{
-    entry.uMessage = uMessage;
-    entry.dwPrimaryKey = dwPrimaryKey;
-    entry.bIsChorded = bIsChorded;
-    entry.dwMaxKeys = dwMaxKeys;
-    entry.dwEndKey = dwEndKey;
-}
-
-void ModState::SetHookKeyEntryFromRegistry(
-    KeyConfiguration& entry,
-    HKEY hkSettings,
-    LPCSTR szValue,
-    UINT uMessage)
-{
-    BYTE abData[sizeof(KeyConfiguration)];
-    DWORD dwSize;
-    KeyConfiguration* pData = (KeyConfiguration*)abData;
-
-    if (::RegGetValue(hkSettings, NULL, szValue, RRF_RT_REG_BINARY, NULL, &abData, &dwSize) == ERROR_SUCCESS)
-    {
-        SetHookKeyEntry(entry, uMessage, pData->dwPrimaryKey, pData->bIsChorded, pData->dwMaxKeys, pData->dwEndKey);
-    }
-}
-
-void ModState::SetHookKeyEntryToRegistry(
-    KeyConfiguration& entry,
-    HKEY hkSettings,
-    LPCSTR szValue,
-    LPCSTR szFailMessage)
-{
-    if (::RegSetValueEx(hkSettings, szValue, 0, REG_BINARY, (const BYTE*)&entry, sizeof(KeyConfiguration)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage(szFailMessage);
-    }
-}
-
 void ModState::LoadSettings(void)
 {
-    s_hookConfiguration.dwSize = sizeof(HookConfiguration);
-    s_hookConfiguration.dwEntries = 19;
-
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[0], WM_USER + 1, VK_OEM_2 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[1], WM_USER + 2, VK_N | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[2], WM_USER + 3, VK_B | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[3], WM_USER + 4, VK_I | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[4], WM_USER + 5, VK_P | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[5], WM_USER + 6, VK_H | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[6], WM_USER + 7, VK_U | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[7], WM_USER + 8, VK_M | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[8], WM_USER + 9, VK_O | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[9], WM_USER + 10, VK_OEM_6 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[10], WM_USER + 11, VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[11], WM_USER + 12, VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[12], WM_USER + 13, VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[13], WM_USER + 14, VK_OEM_PLUS | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[14], WM_USER + 15, VK_OEM_MINUS | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[15], WM_USER + 16, VK_S | KEYSTATE_ALT | KEYSTATE_CTRL);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[16], WM_USER + 17, VK_I | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[17], WM_USER + 18, VK_V | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
-    SetHookKeyEntry(s_hookConfiguration.kcEntries[18], WM_USER + 19, VK_A | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3);
+    char buffer[MaxModMessageLength] = { 0 };
 
     HKEY hkSettings;
     LSTATUS result = ::RegOpenKeyEx(HKEY_CURRENT_USER, SettingsRegPath, 0, KEY_READ | KEY_WRITE, &hkSettings);
 
     if (result == ERROR_FILE_NOT_FOUND)
     {
-        hkSettings = ModState::SaveSettings();
+        SaveSettings();
+
+        result = ::RegOpenKeyEx(HKEY_CURRENT_USER, SettingsRegPath, 0, KEY_READ | KEY_WRITE, &hkSettings);
     }
 
-    if (hkSettings == NULL)
+    if (result != ERROR_SUCCESS)
     {
+        AddModMessage("Failed to access settings, using defaults.");
         return;
     }
 
-    char buffer[MaxModMessageLength] = { 0 };
-
-    DWORD dwData;
-    DWORD dwSize;
-    bool bShowMessage = false;
-
-    SetBoolFromRegistry(hkSettings, "EnableKeyboardHook", "Keyboard hook", &s_isKeyboardHook);
-    SetBoolFromRegistry(hkSettings, "EnableNoDamage", "No damage mode", &s_isNoDamage);
-    SetBoolFromRegistry(hkSettings, "EnableUnlockBuildOptions", "Unlock build mode", &s_isUnlockBuildOptions);
-    SetBoolFromRegistry(hkSettings, "EnableInstantBuild", "Instant build mode", &s_isInstantBuild);
-    SetBoolFromRegistry(hkSettings, "EnableInstantSuperweapons", "Instant superweapons mode", &s_isInstantSuperweapons);
-    SetBoolFromRegistry(hkSettings, "EnableDismissShroud", "Dismiss shroud mode", &s_isDismissShroud);
-    SetBoolFromRegistry(hkSettings, "EnableUnlimitedAmmo", "Unlimited ammo for aircrafts", &s_isUnlimitedAmmo);
-
-    s_needHealing = s_isNoDamage;
-    s_needUnlockBuildOptions = s_isUnlockBuildOptions;
-
-    if (::RegGetValue(hkSettings, NULL, "HarvesterBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    if (!ModState::s_settings.ReadSettings(hkSettings))
     {
-        int iNewValue = (int)(MAX(10UL, MIN(dwData, 150UL)));
-        bool bIsDifferent = (s_harvesterBoost != iNewValue);
-        s_harvesterBoost = iNewValue;
-
-        if (bIsDifferent)
+        for (int index = 0; index < s_settings.Count(); index++)
         {
-            sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-            ModState::AddModMessage(buffer);
+            SettingBase<SettingInfo>& setting = s_settings[index];
+
+            if (setting.IsReadError())
+            {
+                sprintf_s(buffer, "Failed to read setting: %s (%s)", setting.GetValueName(), setting.GetPropertyBag()._szDescription);
+                AddModMessage(buffer);
+            }
         }
     }
 
-    if (::RegGetValue(hkSettings, NULL, "MovementBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    if (s_lastLoadedVersion.IsChanged())
     {
-        int iNewValue = (int)(MAX(5UL, MIN(dwData, 50UL)));;
-        bool bIsDifferent = (s_movementBoost != iNewValue);
-        s_movementBoost = iNewValue;
+        sprintf_s(buffer, "Mod updated to %d.%d.%d.%d from %d.%d.%d.%d",
+            (ModVersion >> 24) & 0xFF,
+            (ModVersion >> 16) & 0xFF,
+            (ModVersion >>  8) & 0xFF,
+            (ModVersion      ) & 0xFF,
+            (*s_lastLoadedVersion >> 24) & 0xFF,
+            (*s_lastLoadedVersion >> 16) & 0xFF,
+            (*s_lastLoadedVersion >>  8) & 0xFF,
+            (*s_lastLoadedVersion      ) & 0xFF);
+        AddModMessage(buffer);
 
-        if (bIsDifferent)
+        *s_lastLoadedVersion = ModVersion;
+        s_lastLoadedVersion.WriteValue(hkSettings);
+    }
+
+    for (int index = 0; index < ARRAYSIZE(s_booleanSettings); index++)
+    {
+        auto setting = s_booleanSettings[index];
+
+        if (setting->IsChanged())
+        {
+            sprintf_s(buffer, "%s: %s", setting->GetPropertyBag()._szDescription, *(*setting) ? "enabled" : "disabled");
+            AddModMessage(buffer);
+        }
+    }
+
+    if (s_harvesterBoost.IsChanged())
+    {
+        *s_harvesterBoost = MAX(10UL, MIN(*s_harvesterBoost, 150UL));
+        if (*s_harvesterBoost != s_harvesterBoost.GetOriginal())
+        {
+            sprintf_s(buffer, "Harvester load: %.0f%% of normal", GetHarvestorBoost() * 100.0f);
+            AddModMessage(buffer);
+        }
+    }
+
+    if (s_movementBoost.IsChanged())
+    {
+        *s_movementBoost = MAX(5UL, MIN(*s_movementBoost, 50UL));
+        if (*s_movementBoost != s_movementBoost.GetOriginal())
         {
             sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
             ModState::AddModMessage(buffer);
         }
     }
 
-    if (::RegGetValue(hkSettings, NULL, "TiberiumGrowthMultiplier", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    if (s_tiberiumGrowthMultiplier.IsChanged())
     {
-        int iNewValue = (int)(MAX(1UL, MIN(dwData, 50UL)));;
-        bool bIsDifferent = (s_tiberiumGrowthMultiplier != iNewValue);
-        s_tiberiumGrowthMultiplier = iNewValue;
-
-        if (bIsDifferent)
+        *s_tiberiumGrowthMultiplier = MAX(1UL, MIN(*s_tiberiumGrowthMultiplier, 50UL));
+        if (*s_tiberiumGrowthMultiplier != s_tiberiumGrowthMultiplier.GetOriginal())
         {
             sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
             ModState::AddModMessage(buffer);
         }
     }
 
-    if (::RegGetValue(hkSettings, NULL, "InitialCreditBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    if (s_initialCreditBoost.IsChanged())
     {
-        s_creditBoostAmount = MAX(0L, (long)dwData);
-
+        s_creditBoostAmount = MIN(*s_initialCreditBoost, (DWORD)MAXLONG);
         if (s_creditBoostAmount > 0)
         {
             ModState::AddModMessage("Credits boosted");
         }
     }
 
-    if (::RegGetValue(hkSettings, NULL, "InitialPowerBoost", RRF_RT_REG_DWORD, NULL, &dwData, &dwSize) == ERROR_SUCCESS)
+    if (s_initialPowerBoost.IsChanged())
     {
-        s_powerBoostAmount = MAX(0L, (long)dwData);
-
+        s_powerBoostAmount = MIN(*s_initialPowerBoost, (DWORD)MAXLONG);
         if (s_powerBoostAmount > 0)
         {
             ModState::AddModMessage("Power boosted");
@@ -749,130 +872,43 @@ void ModState::LoadSettings(void)
     }
 
     s_hookConfiguration.dwSize = sizeof(HookConfiguration);
-    s_hookConfiguration.dwEntries = 19;
+    s_hookConfiguration.dwEntries = ARRAYSIZE(s_keyBindings);
 
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", WM_USER + 1);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", WM_USER + 2);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", WM_USER + 3);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", WM_USER + 4);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", WM_USER + 5);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", WM_USER + 6);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", WM_USER + 7);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", WM_USER + 8);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", WM_USER + 9);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", WM_USER + 10);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", WM_USER + 11);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", WM_USER + 12);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", WM_USER + 13);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", WM_USER + 14);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", WM_USER + 15);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", WM_USER + 16);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", WM_USER + 17);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", WM_USER + 18);
-    SetHookKeyEntryFromRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnAircraft", WM_USER + 19);
+    for (int index = 0; index < ARRAYSIZE(s_keyBindings); index++)
+    {
+        (*(*s_keyBindings[index])).uMessage = s_keyBindings[index]->GetOriginal().uMessage;
+        s_hookConfiguration.kcEntries[index] = *(*s_keyBindings[index]);
+    }
 
     RegCloseKey(hkSettings);
 }
 
-HKEY ModState::SaveSettings(void)
+void ModState::SaveSettings(void)
 {
+    char buffer[MaxModMessageLength] = { 0 };
+
     HKEY hkSettings;
     LSTATUS result = ::RegCreateKeyEx(HKEY_CURRENT_USER, SettingsRegPath, 0, NULL, 0, KEY_READ | KEY_WRITE, NULL, &hkSettings, NULL);
 
     if (result != ERROR_SUCCESS)
     {
-        return NULL;
+        return;
     }
 
-    DWORD dwData = s_isKeyboardHook ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableKeyboardHook", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
+    if (!s_settings.WriteSettings(hkSettings))
     {
-        ModState::AddModMessage("Failed to save keyboard hook flag.");
+        for (int index = 0; index < s_settings.Count(); index++)
+        {
+            SettingBase<SettingInfo>& setting = s_settings[index];
+            
+            if (setting.IsWriteError())
+            {
+                sprintf_s(buffer, "Failed to write setting: %s (%s)", setting.GetValueName(), setting.GetPropertyBag()._szDescription);
+                AddModMessage(buffer);
+            }
+        }
     }
 
-    dwData = s_isNoDamage ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableNoDamage", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save no damage flag.");
-    }
-
-    dwData = s_isUnlockBuildOptions ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableUnlockBuildOptions", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save no damage flag.");
-    }
-
-    dwData = s_isInstantBuild ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableInstantBuild", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save instant build flag.");
-    }
-
-    dwData = s_isInstantSuperweapons ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableInstantSuperweapons", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save instant superweapons flag.");
-    }
-
-    dwData = s_isDismissShroud ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableDismissShroud", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save dismiss shroud flag.");
-    }
-
-    dwData = s_isUnlimitedAmmo ? 1 : 0;
-    if (::RegSetValueEx(hkSettings, "EnableUnlimitedAmmo", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save unlimited ammo flag.");
-    }
-
-    dwData = s_harvesterBoost;
-    if (::RegSetValueEx(hkSettings, "HarvesterBoost", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save harvester boost value.");
-    }
-
-    dwData = s_tiberiumGrowthMultiplier;
-    if (::RegSetValueEx(hkSettings, "TiberiumGrowthMultiplier", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save Tiberium growth multiplier value.");
-    }
-
-    dwData = s_movementBoost;
-    if (::RegSetValueEx(hkSettings, "MovementBoost", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save harvester boost value.");
-    }
-
-    dwData = 0;
-    if (::RegSetValueEx(hkSettings, "InitialCreditBoost", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save credit boost value.");
-    }
-    if (::RegSetValueEx(hkSettings, "InitialPowerBoost", 0, REG_DWORD, (LPCBYTE)&dwData, sizeof(dwData)) != ERROR_SUCCESS)
-    {
-        ModState::AddModMessage("Failed to save power boost value.");
-    }
-
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[0], hkSettings, "KeyHelp", "Failed to save help key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[1], hkSettings, "KeyToggleNoDamage", "Failed to save no damage key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[2], hkSettings, "KeyToggleUnlockBuildOptions", "Failed to save unlock build options key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[3], hkSettings, "KeyToggleInstantBuild", "Failed to save instant build key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[4], hkSettings, "KeyToggleInstantSuperweapons", "Failed to save instant superweapons key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[5], hkSettings, "KeyToggleDismissShroud", "Failed to save dismiss shroud key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[6], hkSettings, "KeyToggleUnlimitedAmmo", "Failed to save unlimited ammo key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[7], hkSettings, "KeyCreditBoost", "Failed to save credit boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[8], hkSettings, "KeyPowerBoost", "Failed to save power boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[9], hkSettings, "KeyIncreaseMovementBoost", "Failed to save increase movement boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[10], hkSettings, "KeyDecreaseMovementBoost", "Failed to save decrease movement boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[11], hkSettings, "KeyIncreaseTiberiumGrowth", "Failed to save increase Tiberium growth factor key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[12], hkSettings, "KeyDecreaseTiberiumGrowth", "Failed to save decrease Tiberium growth factor key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[13], hkSettings, "KeyIncreaseHarvesterBoost", "Failed to save increase harvester boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[14], hkSettings, "KeyDecreaseHarvesterBoost", "Failed to save decrease harvester boost key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[15], hkSettings, "KeySaveSettings", "Failed to save save settings key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[16], hkSettings, "KeySpawnInfantry", "Failed to save spawn infantry key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[17], hkSettings, "KeySpawnVehicle", "Failed to save spawn vehicle key configuration.");
-    SetHookKeyEntryToRegistry(s_hookConfiguration.kcEntries[18], hkSettings, "KeySpawnAircraft", "Failed to save spawn aircraft key configuration.");
-
-    return hkSettings;
+    ::RegCloseKey(hkSettings);
+    return;
 }

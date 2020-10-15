@@ -297,6 +297,8 @@ class DLLExportClass {
 
         static void Calculate_Placement_Distances(BuildingTypeClass* placement_type, unsigned char* placement_distance);
 
+        static void Do_ModActions(void);
+
         static int CurrentDrawCount;
         static int TotalObjectCount;
         static int SortOrder;
@@ -310,11 +312,6 @@ class DLLExportClass {
 
         static bool GameOver;
 
-        static bool Hooked;
-
-        static HANDLE HookThreadHandle;
-        static DWORD HookThreadId;
-
         /*
         ** Pseudo sidebars for players in multiplayer
         */
@@ -327,6 +324,8 @@ class DLLExportClass {
         static unsigned char PlacementDistance[MAX_PLAYERS][MAP_CELL_TOTAL];
 
         static unsigned char SpecialKeyFlags[MAX_PLAYERS];
+
+        static VectorClass<TechnoClass*> UnownedObjects;
 
         /*
         ** Mod directories
@@ -358,9 +357,7 @@ unsigned char DLLExportClass::PlacementDistance[MAX_PLAYERS][MAP_CELL_TOTAL];
 unsigned char DLLExportClass::SpecialKeyFlags[MAX_PLAYERS] = { 0U };
 DynamicVectorClass<char *> DLLExportClass::ModSearchPaths;
 bool DLLExportClass::GameOver = false;
-bool DLLExportClass::Hooked = false;
-HANDLE DLLExportClass::HookThreadHandle = NULL;
-DWORD DLLExportClass::HookThreadId = 0;
+VectorClass<TechnoClass*> DLLExportClass::UnownedObjects;
 
 /*
 ** Global variables
@@ -1437,239 +1434,11 @@ bool Debug_Write_Shape(const char *file_name, void const * shapefile, int shapen
     return true;
 }
 
-HINSTANCE hHookInstance = NULL;
-InstallHookProc installHookProc = NULL;
-UninstallHookProc uninstallHookProc = NULL;
-GetKeyDataProc getKeyDataProc = NULL;
 
-
-BOOL LoadHookDll(LPCHOOKCONFIGURATION lpHookConfiguration)
+const char* GetUnitName(TechnoClass* unit)
 {
-    char szModulePath[MAX_PATH];
-    char szHookPath[MAX_PATH];
-
-    HMODULE hm = NULL;
-
-    if (GetModuleHandleEx(
-        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-        (LPCSTR)&LoadHookDll,
-        &hm) == 0)
-    {
-        return FALSE;
-    }
-
-    if (GetModuleFileName(hm, szModulePath, sizeof(szModulePath)) == 0)
-    {
-        return FALSE;
-    }
-
-    PathRemoveFileSpec(szModulePath);
-    PathCombine(szHookPath, szModulePath, "KeyboardHook.dll");
-
-    hHookInstance = ::LoadLibrary(szHookPath);
-    
-    if (hHookInstance == NULL)
-    {
-        return FALSE;
-    }
-
-    installHookProc = (InstallHookProc) ::GetProcAddress(hHookInstance, "InstallHook");
-    uninstallHookProc = (UninstallHookProc) ::GetProcAddress(hHookInstance, "UninstallHook");
-    getKeyDataProc = (GetKeyDataProc) ::GetProcAddress(hHookInstance, "GetKeyData");
-
-    if ((installHookProc == NULL) || (uninstallHookProc == NULL) || (getKeyDataProc == NULL))
-    {
-        ::FreeLibrary(hHookInstance);
-        hHookInstance = NULL;
-
-        return FALSE;
-    }
-
-    return installHookProc(lpHookConfiguration);
+    return Text_String(unit->Techno_Type_Class()->TechnoTypeClass::Full_Name());
 }
-
-BOOL UnloadHookDll(void)
-{
-    if (hHookInstance != NULL)
-    {
-        uninstallHookProc();
-
-        ::FreeLibrary(hHookInstance);
-        hHookInstance = NULL;
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-DWORD WINAPI HookMessageThread(LPVOID lpParameter)
-{
-    static char buffer[256] = { 0 };
-
-    MSG msg;
-    BOOL bRet;
-    
-    bool bContinue = true;
-
-    while (bContinue && ((bRet = GetMessage(&msg, NULL, 0, 0)) != 0))
-    {
-        if (bRet == -1)
-        {
-            break;
-        }
-        else
-        {
-            bool mode = false;
-            HookKeyData hkdData = { 0 };
-
-            switch (msg.message)
-            {
-            case WM_USER:
-                bContinue = false;
-                break;
-
-            case WM_USER + 1:
-                ModState::TriggerNeedShowHelp();
-                break;
-
-            case WM_USER + 2:
-                mode = ModState::ToggleNoDamage();
-                sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 3:
-                mode = ModState::ToggleUnlockBuildOptions();
-                sprintf_s(buffer, "Unlock build mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 4:
-                mode = ModState::ToggleInstantBuild();
-                sprintf_s(buffer, "Instant build mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 5:
-                mode = ModState::ToggleInstantSuperweapons();
-                sprintf_s(buffer, "Instant superweapons mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 6:
-                mode = ModState::ToggleDismissShroud();
-                sprintf_s(buffer, "Dismiss shroud mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 7:
-                mode = ModState::ToggleUnlimitedAmmo();
-                sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 8:
-                ModState::IncreaseCreditBoost();
-                sprintf_s(buffer, "Credits boosted");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 9:
-                ModState::IncreasePowerBoost();
-                sprintf_s(buffer, "Power boosted");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 10:
-                ModState::IncreaseMovementBoost();
-                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 11:
-                ModState::DecreaseMovementBoost();
-                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 12:
-                ModState::IncreaseTiberiumGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 13:
-                ModState::DecreaseTiberiumGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 14:
-                ModState::IncreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 15:
-                ModState::DecreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 16:
-                ModState::TriggerNeedSaveSettings();
-                sprintf_s(buffer, "Saving current settings");
-                ModState::AddModMessage(buffer);
-                break;
-
-            case WM_USER + 17:
-                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
-                {
-                    if (ModState::SetSpawnInfantryFromKeyData(hkdData))
-                    {
-                        sprintf_s(buffer, "Spawning infantry");
-                        ModState::AddModMessage(buffer);
-                    }
-                }
-                break;
-
-            case WM_USER + 18:
-                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
-                {
-                    if (ModState::SetSpawnUnitFromKeyData(hkdData))
-                    {
-                        sprintf_s(buffer, "Spawning vehicle");
-                        ModState::AddModMessage(buffer);
-                    }
-                }
-                break;
-
-            case WM_USER + 19:
-                if ((getKeyDataProc != NULL) && (getKeyDataProc(msg.wParam, &hkdData) == TRUE))
-                {
-                    if (ModState::SetSpawnAircraftFromKeyData(hkdData))
-                    {
-                        sprintf_s(buffer, "Spawning aircraft");
-                        ModState::AddModMessage(buffer);
-                    }
-                }
-                break;
-            }
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        if (!bContinue)
-        {
-            break;
-        }
-    }
-
-    return 0;
-}
-
 
 /**************************************************************************************************
 * CNC_Advance_Instance -- Process one logic frame
@@ -2142,21 +1911,9 @@ void DLLExportClass::Init(void)
 
     ModState::Initialize();
 
-    if (!Hooked && ModState::IsKeyboardHook())
+    if (ModState::IsKeyboardHook())
     {
-        Hooked = true;
-
-        HookThreadHandle = CreateThread(NULL, 0, HookMessageThread, NULL, 0, &HookThreadId);
-        ModState::SetHookMessageThreadId(HookThreadId);
-
-        if (LoadHookDll(ModState::GetHookConfiguration()) == FALSE)
-        {
-            PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
-            CloseHandle(HookThreadHandle);
-
-            Hooked = false;
-            ModState::AddModMessage("Failed to hook keyboard");
-        }
+        KeyboardHookInstance.InstallHook();
     }
 }
 
@@ -2175,19 +1932,6 @@ void DLLExportClass::Init(void)
 **************************************************************************************************/
 void DLLExportClass::Shutdown(void)
 {
-    if (Hooked)
-    {
-        UnloadHookDll();
-
-        if (HookThreadHandle)
-        {
-            PostThreadMessage(HookThreadId, WM_USER, 0, NULL);
-            CloseHandle(HookThreadHandle);
-        }
-
-        Hooked = false;
-    }
-
     for (int i=0 ; i<ModSearchPaths.Count() ; i++) {
         delete [] ModSearchPaths[i];
     }
@@ -4748,6 +4492,196 @@ void DLLExportClass::Recalculate_Placement_Distances()
     }
 }
 
+void DLLExportClass::Do_ModActions(void)
+{
+    static char buffer[MaxModMessageLength];
+
+    if (PlayerPtr->IsHuman)
+    {
+        if (EventCallback != NULL)
+        {
+            const ModMessage* debugMessage = ModState::GetNextModMessage();
+
+            if (debugMessage != NULL)
+            {
+                On_Message(PlayerPtr, debugMessage->szMessage, debugMessage->iTimeout, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
+            }
+        }
+
+        long creditBoost = ModState::GetCreditBoost();
+        if (creditBoost)
+        {
+            PlayerPtr->Credits += creditBoost;
+            PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
+        }
+
+        int powerBoost = ModState::GetPowerBoost();
+        if (powerBoost)
+        {
+            PlayerPtr->Power += powerBoost;
+            PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
+        }
+
+        if (ModState::NeedUpdateUnlockBuildOptions())
+        {
+            PlayerPtr->DebugUnlockBuildables = ModState::IsUnlockBuildOptionsEnabled();
+            PlayerPtr->IsRecalcNeeded = true;
+        }
+
+        if (ModState::NeedHealing())
+        {
+            int index;
+            for (index = 0; index < Units.Count(); index++)
+            {
+                UnitClass* unitPtr = Units.Ptr(index);
+                if (unitPtr && !unitPtr->IsInLimbo && (unitPtr->House == PlayerPtr))
+                {
+                    unitPtr->Strength = unitPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Aircraft.Count(); index++)
+            {
+                AircraftClass* aircraftPtr = Aircraft.Ptr(index);
+                if (aircraftPtr && !aircraftPtr->IsInLimbo && (aircraftPtr->House == PlayerPtr))
+                {
+                    aircraftPtr->Strength = aircraftPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Infantry.Count(); index++)
+            {
+                InfantryClass* infantryPtr = Infantry.Ptr(index);
+                if (infantryPtr && !infantryPtr->IsInLimbo && (infantryPtr->House == PlayerPtr))
+                {
+                    infantryPtr->Strength = infantryPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Buildings.Count(); index++)
+            {
+                BuildingClass* buildingPtr = Buildings.Ptr(index);
+                if (buildingPtr && !buildingPtr->IsInLimbo && (buildingPtr->House == PlayerPtr))
+                {
+                    buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
+                }
+            }
+        }
+
+        if (ModState::NeedSaveSettings())
+        {
+            ModState::SaveCurrentSettings();
+        }
+
+        InfantryType infantryType = INFANTRY_NONE;
+        UnitType unitType = UNIT_NONE;
+        AircraftType aircraftType = AIRCRAFT_NONE;
+
+        if ((infantryType = ModState::GetSpawnInfantryType()) != INFANTRY_NONE)
+        {
+            if (infantryType != INFANTRY_COUNT)
+            {
+                InfantryClass* inf = new InfantryClass(infantryType, PlayerPtr->Class->House);
+                if (inf)
+                {
+                    if (inf->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned infantry: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn infantry at location: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+                    }
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Infantry type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((unitType = ModState::GetSpawnUnitType()) != UNIT_NONE)
+        {
+            if (unitType != UNIT_COUNT)
+            {
+                UnitClass* unit = new UnitClass(unitType, PlayerPtr->Class->House);
+                if (unit)
+                {
+                    if (unit->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned vehicle: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn vehicle at location: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+                    }
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Vehicle type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((aircraftType = ModState::GetSpawnAircraftType()) != AIRCRAFT_NONE)
+        {
+            if (aircraftType != AIRCRAFT_COUNT)
+            {
+                AircraftClass* air = new AircraftClass(aircraftType, PlayerPtr->Class->House);
+                if (air)
+                {
+                    air->Altitude = 0;
+                    if (air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned aircraft: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn aircraft at location: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Aircraft type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+
+        HousesType captureHouse = HOUSE_NONE;
+        if ((captureHouse = ModState::GetCaptureHouse()) != HOUSE_NONE)
+        {
+            auto house = HouseClass::As_Pointer(captureHouse);
+            unsigned int selectedCount = (unsigned int)(CurrentObject.Count());
+            if (UnownedObjects.Length() < selectedCount)
+            {
+                UnownedObjects.Resize(CurrentObject.Count());
+            }
+
+            unsigned int fillIndex = 0;
+            for (unsigned int index = 0; index < selectedCount; index++)
+            {
+                auto object = CurrentObject[index];
+                if (object && (captureHouse != object->Owner()) && (object->Is_Techno()))
+                {
+                    UnownedObjects[fillIndex++] = (TechnoClass*)object;
+                }
+            }
+
+            for (unsigned int index = 0; index < fillIndex; index++)
+            {
+                UnownedObjects[index]->Captured(house, true);
+            }
+        }
+    }
+}
+
 
 /**************************************************************************************************
 * DLLExportClass::Get_Placement_State -- Get a snapshot of legal validity of placing a structure on all map cells
@@ -5963,113 +5897,8 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
         return false;;
     }
 
-    if (PlayerPtr->IsHuman)
-    {
-        if (EventCallback != NULL)
-        {
-            const ModMessage* debugMessage = ModState::GetNextModMessage();
-
-            if (debugMessage != NULL)
-            {
-                On_Message(PlayerPtr, debugMessage->szMessage, debugMessage->iTimeout, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
-            }
-        }
-
-        long creditBoost = ModState::GetCreditBoost();
-        if (creditBoost)
-        {
-            PlayerPtr->Credits += creditBoost;
-            PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
-        }
-
-        int powerBoost = ModState::GetPowerBoost();
-        if (powerBoost)
-        {
-            PlayerPtr->Power += powerBoost;
-            PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
-        }
-
-        if (ModState::NeedUpdateUnlockBuildOptions())
-        {
-            PlayerPtr->DebugUnlockBuildables = ModState::IsUnlockBuildOptionsEnabled();
-            PlayerPtr->IsRecalcNeeded = true;
-        }
-
-        if (ModState::NeedHealing())
-        {
-            int index;
-            for (index = 0; index < Units.Count(); index++)
-            {
-                UnitClass* unitPtr = Units.Ptr(index);
-                if (unitPtr && !unitPtr->IsInLimbo && (unitPtr->House == PlayerPtr))
-                {
-                    unitPtr->Strength = unitPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Aircraft.Count(); index++)
-            {
-                AircraftClass* aircraftPtr = Aircraft.Ptr(index);
-                if (aircraftPtr && !aircraftPtr->IsInLimbo && (aircraftPtr->House == PlayerPtr))
-                {
-                    aircraftPtr->Strength = aircraftPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Infantry.Count(); index++)
-            {
-                InfantryClass* infantryPtr = Infantry.Ptr(index);
-                if (infantryPtr && !infantryPtr->IsInLimbo && (infantryPtr->House == PlayerPtr))
-                {
-                    infantryPtr->Strength = infantryPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Buildings.Count(); index++)
-            {
-                BuildingClass* buildingPtr = Buildings.Ptr(index);
-                if (buildingPtr && !buildingPtr->IsInLimbo && (buildingPtr->House == PlayerPtr))
-                {
-                    buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
-                }
-            }
-        }
-
-        if (ModState::NeedSaveSettings())
-        {
-            ModState::SaveCurrentSettings();
-        }
-
-        InfantryType infantryType = INFANTRY_NONE;
-        UnitType unitType = UNIT_NONE;
-        AircraftType aircraftType = AIRCRAFT_NONE;
-        
-        if ((infantryType = ModState::GetSpawnInfantryType()) != INFANTRY_NONE)
-        {
-            InfantryClass* inf = new InfantryClass(infantryType, PlayerPtr->Class->House);
-            if (inf)
-            {
-                inf->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
-            }
-        }
-        else if ((unitType = ModState::GetSpawnUnitType()) != UNIT_NONE)
-        {
-            UnitClass* unit = new UnitClass(unitType, PlayerPtr->Class->House);
-            if (unit)
-            {
-                unit->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
-            }
-        }
-        else if ((aircraftType = ModState::GetSpawnAircraftType()) != AIRCRAFT_NONE)
-        {
-            AircraftClass* air = new AircraftClass(aircraftType, PlayerPtr->Class->House);
-            if (air)
-            {
-                air->Altitude = 0;
-                air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N);
-            }
-        }
-    }
+    // Perform actions based on the mod state.
+    Do_ModActions();
 
     strncpy(&player_info->Name[0], MPlayerNames[CurrentLocalPlayerIndex], MPLAYER_NAME_MAX);
     player_info->Name[MPLAYER_NAME_MAX - 1] = 0;			// Make sure it's terminated

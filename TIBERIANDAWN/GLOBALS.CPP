@@ -1050,3 +1050,5 @@ TheaterType		LastTheater = THEATER_NONE;
 
 
 bool RunningAsDLL = false;
+
+KeyboardHook KeyboardHookInstance;

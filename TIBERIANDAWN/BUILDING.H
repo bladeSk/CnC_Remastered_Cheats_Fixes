@@ -240,7 +240,7 @@ class BuildingClass : public TechnoClass
 		virtual TARGET Greatest_Threat(ThreatType threat) const;
 		virtual ResultType Take_Damage(int & damage, int distance, WarheadType warhead, TechnoClass * source=0);
 		virtual TARGET As_Target(void) const;
-		virtual bool Captured(HouseClass * newowner);
+		virtual bool Captured(HouseClass * newowner, bool forced = false);
 
 		/*
 		**	AI.

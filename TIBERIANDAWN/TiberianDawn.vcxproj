@@ -240,6 +240,7 @@
     <ClInclude Include="IPXGCONN.H" />
     <ClInclude Include="IPXMGR.H" />
     <ClInclude Include="JSHELL.H" />
+    <ClInclude Include="KeyboardHook.h" />
     <ClInclude Include="LAYER.H" />
     <ClInclude Include="LED.H" />
     <ClInclude Include="LINK.H" />
@@ -272,6 +273,7 @@
     <ClInclude Include="RAWFILE.H" />
     <ClInclude Include="REAL.H" />
     <ClInclude Include="REGION.H" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="Resource\resource.h" />
     <ClInclude Include="RULES.H" />
     <ClInclude Include="SAVEDLG.H" />
@@ -445,6 +447,7 @@
     <ClCompile Include="IPXGCONN.CPP" />
     <ClCompile Include="IPXMGR.CPP" />
     <ClCompile Include="JSHELL.CPP" />
+    <ClCompile Include="KeyboardHook.cpp" />
     <ClCompile Include="KEYFRAME.CPP" />
     <ClCompile Include="LAYER.CPP" />
     <ClCompile Include="LINK.CPP" />

@@ -1,18 +1,3 @@
-//
-// Copyright 2020 Electronic Arts Inc.
-//
-// TiberianDawn.DLL and RedAlert.dll and corresponding source code is free 
-// software: you can redistribute it and/or modify it under the terms of 
-// the GNU General Public License as published by the Free Software Foundation, 
-// either version 3 of the License, or (at your option) any later version.
-
-// TiberianDawn.DLL and RedAlert.dll and corresponding source code is distributed 
-// in the hope that it will be useful, but with permitted additional restrictions 
-// under Section 7 of the GPL. See the GNU General Public License in LICENSE.TXT 
-// distributed with this program. You should have received a copy of the 
-// GNU General Public License along with permitted additional restrictions 
-// with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
-
 #ifndef MODSTATE_H
 #define MODSTATE_H
 
@@ -27,23 +12,60 @@ struct ModMessage
     int iTimeout;
 };
 
+struct SettingInfo
+{
+    const char* const _szDescription;
+};
+
 class ModState
 {
 private:
-    static bool s_isKeyboardHook;
-    static bool s_isNoDamage;
-    static bool s_needHealing;
-    static bool s_isUnlockBuildOptions;
-    static bool s_needUnlockBuildOptions;
-    static bool s_isInstantBuild;
-    static bool s_isInstantSuperweapons;
-    static bool s_isDismissShroud;
-    static bool s_isUnlimitedAmmo;
+    static DWordSetting<SettingInfo> s_lastLoadedVersion;
 
-    static int s_harvesterBoost;
-    static int s_movementBoost;
+    static BooleanSetting<SettingInfo> s_isKeyboardHook;
+    static BooleanSetting<SettingInfo> s_isNoDamage;
+    static BooleanSetting<SettingInfo> s_needHealing;
+    static BooleanSetting<SettingInfo> s_isUnlockBuildOptions;
+    static BooleanSetting<SettingInfo> s_needUnlockBuildOptions;
+    static BooleanSetting<SettingInfo> s_isInstantBuild;
+    static BooleanSetting<SettingInfo> s_isInstantSuperweapons;
+    static BooleanSetting<SettingInfo> s_isDismissShroud;
+    static BooleanSetting<SettingInfo> s_isUnlimitedAmmo;
 
-    static int s_tiberiumGrowthMultiplier;
+    static const BooleanSetting<SettingInfo>* s_booleanSettings[];
+
+    static DWordSetting<SettingInfo> s_harvesterBoost;
+    static DWordSetting<SettingInfo> s_movementBoost;
+
+    static DWordSetting<SettingInfo> s_tiberiumGrowthMultiplier;
+
+    static DWordSetting<SettingInfo> s_initialCreditBoost;
+    static DWordSetting<SettingInfo> s_initialPowerBoost;
+
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyHelpKeySetting;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleNoDamage;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleUnlockBuildOptions;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleInstantBuild;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleInstantSuperweapons;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleDismissShroud;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyToggleUnlimitedAmmo;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyCreditBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyPowerBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseMovementBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseMovementBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseTiberiumGrowth;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseTiberiumGrowth;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseHarvesterBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseHarvesterBoost;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keySaveSettings;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnInfantry;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnVehicle;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnAircraft;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyCapture;
+
+    static BinarySetting<KeyConfiguration, SettingInfo>* s_keyBindings[];
+
+    static Settings<SettingInfo> s_settings;
 
     static volatile long s_creditBoostAmount;
     static volatile long s_powerBoostAmount;
@@ -64,6 +86,8 @@ private:
     static UnitType s_allowedUnitTypes[UNIT_COUNT];
     static AircraftType s_allowedAircraftTypes[AIRCRAFT_COUNT];
 
+    static HousesType s_captureHouseType;
+
     static int s_messageSkipFrames;
     static char s_modMessageBuffers[MaxModMessages][MaxModMessageLength];
     static ModMessage s_modMessages[MaxModMessages];
@@ -74,17 +98,17 @@ private:
 public:
     static void Initialize(void);
 
-    static inline bool IsKeyboardHook(void) { return s_isKeyboardHook; }
+    static inline bool IsKeyboardHook(void) { return *s_isKeyboardHook; }
 
     static bool ToggleNoDamage(void);
 
-    static inline bool IsNoDamageEnabled(void) { return s_isNoDamage; };
+    static inline bool IsNoDamageEnabled(void) { return *s_isNoDamage; };
 
     static inline bool NeedHealing(void)
     {
-        if (s_needHealing)
+        if (*s_needHealing)
         {
-            s_needHealing = false;
+            *s_needHealing = false;
             return true;
         }
 
@@ -93,7 +117,7 @@ public:
 
     static inline bool IsCrushable(TechnoClass* target)
     {
-        if (s_isNoDamage && target->House == PlayerPtr)
+        if (*s_isNoDamage && target->House == PlayerPtr)
         {
             return false;
         }
@@ -103,7 +127,7 @@ public:
 
     static inline bool IsCrushable(ObjectClass* target)
     {
-        if (s_isNoDamage && target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
+        if (*s_isNoDamage && target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
         {
             return false;
         }
@@ -115,14 +139,14 @@ public:
 
     static inline bool IsUnlockBuildOptionsEnabled(void)
     {
-        return s_isUnlockBuildOptions;
+        return *s_isUnlockBuildOptions;
     }
 
     static inline bool NeedUpdateUnlockBuildOptions(void)
     {
-        if (s_needUnlockBuildOptions)
+        if (*s_needUnlockBuildOptions)
         {
-            s_needUnlockBuildOptions = false;
+            *s_needUnlockBuildOptions = false;
             return true;
         }
 
@@ -133,33 +157,33 @@ public:
 
     static inline bool IsInstantBuildEnabled(void)
     {
-        return s_isInstantBuild;
+        return *s_isInstantBuild;
     }
 
     static bool ToggleInstantSuperweapons(void);
 
     static inline bool IsInstantSuperweaponsEnabled(void)
     {
-        return s_isInstantSuperweapons;
+        return *s_isInstantSuperweapons;
     }
 
     static bool ToggleDismissShroud(void);
 
     static inline bool IsDismissShroudEnabled(void)
     {
-        return s_isDismissShroud;
+        return *s_isDismissShroud;
     }
 
     static inline bool CanDismissShroud(void)
     {
-        return (Debug_Unshroud || s_isDismissShroud);
+        return (Debug_Unshroud || *s_isDismissShroud);
     }
 
     static bool ToggleUnlimitedAmmo(void);
 
     static inline bool IsUnlimitedAmmoEnabled(void)
     {
-        return s_isUnlimitedAmmo;
+        return *s_isUnlimitedAmmo;
     }
 
     static inline bool IsUnlimitedAmmoEnabled(TechnoClass* object)
@@ -172,7 +196,7 @@ public:
 
                 if ((type == AIRCRAFT_ORCA) || (type == AIRCRAFT_HELICOPTER))
                 {
-                    return s_isUnlimitedAmmo;
+                    return *s_isUnlimitedAmmo;
                 }
             }
         }
@@ -185,12 +209,12 @@ public:
 
     static inline int GetHarvesterFullLoadCredits(void)
     {
-        return (int)(UnitTypeClass::FULL_LOAD_CREDITS * s_harvesterBoost / 10.0f);
+        return (int)(UnitTypeClass::FULL_LOAD_CREDITS * *s_harvesterBoost / 10.0f);
     }
 
     static inline float GetHarvestorBoost(void)
     {
-        return (s_harvesterBoost / 10.0f);
+        return (*s_harvesterBoost / 10.0f);
     }
 
     static bool IncreaseMovementBoost(void);
@@ -198,14 +222,14 @@ public:
 
     static inline float GetMovementBoost(void)
     {
-        return s_movementBoost / 10.0f;
+        return *s_movementBoost / 10.0f;
     }
 
     static inline float GetGroundSpeedBias(HouseClass* house)
     {
         if (house == PlayerPtr)
         {
-            return ((house->GroundspeedBias * s_movementBoost) / 10.0f);
+            return ((house->GroundspeedBias * *s_movementBoost) / 10.0f);
         }
 
         return house->GroundspeedBias;
@@ -215,7 +239,7 @@ public:
     {
         if (house == PlayerPtr)
         {
-            float bias = ((house->AirspeedBias * s_movementBoost) / 10.0f);
+            float bias = ((house->AirspeedBias * *s_movementBoost) / 10.0f);
 
             if ((*object) == AIRCRAFT_A10)
             {
@@ -234,7 +258,7 @@ public:
 
     static inline int GetTiberiumGrowthMultiplier(void)
     {
-        return s_tiberiumGrowthMultiplier;
+        return *s_tiberiumGrowthMultiplier;
     }
 
     static inline void IncreaseCreditBoost(void)
@@ -278,9 +302,9 @@ public:
 
     static void SaveCurrentSettings(void);
 
-    static bool SetSpawnInfantryFromKeyData(HookKeyData& hkdData);
-    static bool SetSpawnUnitFromKeyData(HookKeyData& hkdData);
-    static bool SetSpawnAircraftFromKeyData(HookKeyData& hkData);
+    static InfantryType SetSpawnInfantryFromKeyData(HookKeyData& hkdData);
+    static UnitType SetSpawnUnitFromKeyData(HookKeyData& hkdData);
+    static AircraftType SetSpawnAircraftFromKeyData(HookKeyData& hkData);
 
     static InfantryType GetSpawnInfantryType(void)
     {
@@ -306,6 +330,16 @@ public:
         return result;
     }
 
+    static HousesType SetCaptureHouseFromKeyData(HookKeyData& hkdData);
+
+    static HousesType GetCaptureHouse(void)
+    {
+        HousesType result = s_captureHouseType;
+        s_captureHouseType = HOUSE_NONE;
+
+        return result;
+    }
+
     static void MarkFrame(void);
 
     static void AddModMessage(const char* message, int timeout = 0);
@@ -313,30 +347,12 @@ public:
     static const ModMessage* GetNextModMessage(void);
 
 private:
+    static bool IsSpawnable(const TechnoTypeClass* type);
+
     static int GetIndexFromKeyData(HookKeyData& hkdData);
 
-    static void SetBoolFromRegistry(__in HKEY hkSettings, __in_z LPCSTR szValue, __in_z LPCSTR szName, __inout bool* pbValue);
-
-    static void SetHookKeyEntry(
-        KeyConfiguration& entry,
-        UINT uMessage,
-        DWORD dwPrimaryKey,
-        BOOL bIsChorded = FALSE,
-        DWORD dwMaxKeys = 1,
-        DWORD dwEndKey = 0);
-    static void SetHookKeyEntryFromRegistry(
-        KeyConfiguration& entry,
-        __in HKEY hkSettings,
-        __in_z LPCSTR szValue,
-        UINT uMessage);
-    static void SetHookKeyEntryToRegistry(
-        KeyConfiguration& entry,
-        __in HKEY hkSettings,
-        __in_z LPCSTR szValue,
-        __in_z_opt LPCSTR szFailMessage);
-
     static void LoadSettings(void);
-    static HKEY SaveSettings(void);
+    static void SaveSettings(void);
 };
 
 #endif
