@@ -128,7 +128,7 @@ typedef int bool;
 #include <windows.h>
 
 // Enable to turn on beta mode for the mod.
-#define MOD_BETA
+//#define MOD_BETA
 
 /**********************************************************************
 **	If the following define is enabled, then the memory checking code

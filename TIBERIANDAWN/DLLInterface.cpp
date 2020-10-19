@@ -4509,14 +4509,14 @@ void DLLExportClass::Do_ModActions(void)
         }
 
         long creditBoost = ModState::GetCreditBoost();
-        if (creditBoost)
+        if (creditBoost && (PlayerPtr->Credits < 500000L))
         {
             PlayerPtr->Credits += creditBoost;
             PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
         }
 
         int powerBoost = ModState::GetPowerBoost();
-        if (powerBoost)
+        if (powerBoost && (PlayerPtr->Power < 50000))
         {
             PlayerPtr->Power += powerBoost;
             PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
@@ -4568,11 +4568,6 @@ void DLLExportClass::Do_ModActions(void)
             }
         }
 
-        if (ModState::NeedSaveSettings())
-        {
-            ModState::SaveCurrentSettings();
-        }
-
         InfantryType infantryType = INFANTRY_NONE;
         UnitType unitType = UNIT_NONE;
         AircraftType aircraftType = AIRCRAFT_NONE;
@@ -4594,6 +4589,8 @@ void DLLExportClass::Do_ModActions(void)
                         sprintf_s(buffer, "Could not spawn infantry at location: %s", GetUnitName(inf));
                         ModState::AddModMessage(buffer);
                     }
+
+                    ModState::SetLastSpawnInfantryType(infantryType);
                 }
             }
             else
@@ -4619,6 +4616,8 @@ void DLLExportClass::Do_ModActions(void)
                         sprintf_s(buffer, "Could not spawn vehicle at location: %s", GetUnitName(unit));
                         ModState::AddModMessage(buffer);
                     }
+
+                    ModState::SetLastSpawnUnitType(unitType);
                 }
             }
             else
@@ -4645,6 +4644,8 @@ void DLLExportClass::Do_ModActions(void)
                         sprintf_s(buffer, "Could not spawn aircraft at location: %s", GetUnitName(air));
                         ModState::AddModMessage(buffer);
                     }
+
+                    ModState::SetLastSpawnAircraftType(aircraftType);
                 }
             }
             else
@@ -4678,6 +4679,16 @@ void DLLExportClass::Do_ModActions(void)
             {
                 UnownedObjects[index]->Captured(house, true);
             }
+        }
+
+        if (ModState::NeedResetSettingsToDefault())
+        {
+            ModState::ResetSettingsToDefault();
+        }
+
+        if (ModState::NeedSaveSettings())
+        {
+            ModState::SaveCurrentSettings();
         }
     }
 }

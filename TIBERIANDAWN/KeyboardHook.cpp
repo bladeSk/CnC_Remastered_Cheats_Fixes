@@ -285,6 +285,11 @@ DWORD WINAPI KeyboardHook::HookMessageThread(LPVOID lpParameter)
                 {
                     ModState::SetCaptureHouseFromKeyData(hkdData);
                 }
+                break;
+
+            case WM_USER + 21:
+                ModState::TriggerNeedResetSettingsToDefault();
+                break;
             }
 
             TranslateMessage(&msg);

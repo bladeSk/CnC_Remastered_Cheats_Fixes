@@ -12,6 +12,7 @@ protected:
     P _pPropertyBag;
 
     bool _bIsChanged;
+    bool _bIsNotFound;
     bool _bIsReadError;
     bool _bIsWriteError;
 
@@ -31,6 +32,7 @@ public:
     virtual bool CanWrite(void) const { return _bCanWrite; }
 
     virtual bool IsChanged(void) const { return _bIsChanged; }
+    virtual bool IsNotFound(void) const { return _bIsNotFound; }
     virtual bool IsReadError(void) const { return _bIsReadError; }
     virtual bool IsWriteError(void) const { return _bIsWriteError; }
 
@@ -54,6 +56,8 @@ public:
         return OnWriteValue(hkKey);
     }
 
+    virtual void Revert(void) = 0;
+
 protected:
     virtual bool OnReadValue(HKEY hkKey) = 0;
     virtual bool OnWriteValue(HKEY hkKey) = 0;
@@ -68,6 +72,7 @@ protected:
             {
                 // Not found isn't a read error.
                 _bIsReadError = false;
+                _bIsNotFound = true;
                 return false;
             }
         }
@@ -119,7 +124,7 @@ public:
         return _tOriginal;
     }
 
-    void Revert(void)
+    virtual void Revert(void)
     {
         _tCurrent = _tOriginal;
         _bIsChanged = false;

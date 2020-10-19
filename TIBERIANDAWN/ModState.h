@@ -62,6 +62,7 @@ private:
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnVehicle;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnAircraft;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyCapture;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyResetToDefault;
 
     static BinarySetting<KeyConfiguration, SettingInfo>* s_keyBindings[];
 
@@ -77,10 +78,15 @@ private:
     static char s_helpMessages[KEYHOOK_MAXHOOKKEYS + 2][MaxModMessageLength];
 
     static bool s_needSaveSettings;
+    static bool s_needResetSettingsToDefault;
 
     static InfantryType s_spawnInfantryType;
     static UnitType s_spawnUnitType;
     static AircraftType s_spawnAircraftType;
+
+    static InfantryType s_lastSpawnInfantryType;
+    static UnitType s_lastSpawnUnitType;
+    static AircraftType s_lastSpawnAircraftType;
 
     static InfantryType s_allowedInfantryTypes[INFANTRY_COUNT];
     static UnitType s_allowedUnitTypes[UNIT_COUNT];
@@ -295,12 +301,20 @@ public:
 
     static bool TriggerNeedSaveSettings(void);
 
+    static bool TriggerNeedResetSettingsToDefault(void);
+
     static bool NeedSaveSettings(void)
     {
         return s_needSaveSettings;
     }
 
+    static bool NeedResetSettingsToDefault(void)
+    {
+        return s_needResetSettingsToDefault;
+    }
+
     static void SaveCurrentSettings(void);
+    static void ResetSettingsToDefault(void);
 
     static InfantryType SetSpawnInfantryFromKeyData(HookKeyData& hkdData);
     static UnitType SetSpawnUnitFromKeyData(HookKeyData& hkdData);
@@ -330,6 +344,21 @@ public:
         return result;
     }
 
+    static void SetLastSpawnInfantryType(InfantryType type)
+    {
+        s_lastSpawnInfantryType = type;
+    }
+
+    static void SetLastSpawnUnitType(UnitType type)
+    {
+        s_lastSpawnUnitType = type;
+    }
+
+    static void SetLastSpawnAircraftType(AircraftType type)
+    {
+        s_lastSpawnAircraftType = type;
+    }
+
     static HousesType SetCaptureHouseFromKeyData(HookKeyData& hkdData);
 
     static HousesType GetCaptureHouse(void)
@@ -349,10 +378,11 @@ public:
 private:
     static bool IsSpawnable(const TechnoTypeClass* type);
 
-    static int GetIndexFromKeyData(HookKeyData& hkdData);
+    static int GetIndexFromKeyData(HookKeyData& hkdData, int iLastType);
 
     static void LoadSettings(void);
     static void SaveSettings(void);
+    static void BackupSettings(void);
 };
 
 #endif
