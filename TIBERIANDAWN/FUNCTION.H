@@ -127,6 +127,8 @@ typedef int bool;
 //#define WIN32 =1	//_LEAN_AND_MEAN
 #include <windows.h>
 
+// Enable to turn on beta mode for the mod.
+//#define MOD_BETA
 
 /**********************************************************************
 **	If the following define is enabled, then the memory checking code
@@ -285,7 +287,11 @@ CELL __cdecl Coord_Cell(COORDINATE coord);
 #include	"ipxaddr.h"
 #include "FACINGFF.h"
 
+#include "hook.h"
+#include "Settings.h"
 #include "ModState.h"
+#include "KeyboardHook.h"
+
 /****************************************************************************
 **	This is a "node", used for the lists of available games & players.  The
 **	'Game' structure is used for games; the 'Player' structure for players.

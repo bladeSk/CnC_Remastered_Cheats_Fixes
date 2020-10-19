@@ -404,4 +404,6 @@ extern TheaterType LastTheater;
 
 extern bool ShareAllyVisibility;
 
+extern KeyboardHook KeyboardHookInstance;
+
 #endif

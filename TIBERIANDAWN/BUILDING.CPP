@@ -3587,10 +3587,10 @@ bool BuildingClass::Toggle_Primary(void)
  *   05/03/1995 JLB : Created.                                                                 *
  *   07/05/1995 JLB : Fixed production problem with capturing enemy buildings.                 *
  *=============================================================================================*/
-bool BuildingClass::Captured(HouseClass * newowner)
+bool BuildingClass::Captured(HouseClass * newowner, bool forced)
 {
 	Validate();
-	if (Can_Capture() && newowner != House) {
+	if ((Can_Capture() || forced) && newowner != House) {
 		switch (Owner()) {
 			case HOUSE_GOOD:
 				Speak(VOX_GDI_CAPTURED);
@@ -3695,7 +3695,7 @@ bool BuildingClass::Captured(HouseClass * newowner)
 		HouseClass * oldowner = House;				// Added for RA AI in TD. ST - 7/26/2019 9:25AM
 
 		IsCaptured = true;
-		TechnoClass::Captured(newowner);
+		TechnoClass::Captured(newowner, forced);
 
 
 #ifdef USE_RA_AI

@@ -633,6 +633,12 @@
     <ClInclude Include="ModState.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Settings.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyboardHook.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AADATA.CPP">
@@ -1213,6 +1219,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ModState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyboardHook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

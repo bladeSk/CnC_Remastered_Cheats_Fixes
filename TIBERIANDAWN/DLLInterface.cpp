@@ -28,6 +28,7 @@
 
 
 #include <stdio.h>
+#include <shlwapi.h>
 
 #include	"function.h"
 #include "externs.h"
@@ -35,6 +36,8 @@
 #include "Gadget.h"
 #include "defines.h" // VOC_COUNT, VOX_COUNT
 #include "SidebarGlyphx.h"
+
+#include "hook.h"
 
 
 
@@ -56,8 +59,6 @@ extern bool Color_Cycle(void);
 */
 bool Debug_Write_Shape_Type(const ObjectTypeClass *type, int shapenum);
 bool Debug_Write_Shape(const char *file_name, void const * shapefile, int shapenum, int flags = 0, void const * ghostdata = NULL);
-
-void HookMessageLoop(void);
 
 typedef void (__cdecl* CNC_Event_Callback_Type)(const EventCallbackStruct &event);
 typedef unsigned __int64 uint64;
@@ -296,6 +297,8 @@ class DLLExportClass {
 
         static void Calculate_Placement_Distances(BuildingTypeClass* placement_type, unsigned char* placement_distance);
 
+        static void Do_ModActions(void);
+
         static int CurrentDrawCount;
         static int TotalObjectCount;
         static int SortOrder;
@@ -309,8 +312,6 @@ class DLLExportClass {
 
         static bool GameOver;
 
-        static bool Hooked;
-
         /*
         ** Pseudo sidebars for players in multiplayer
         */
@@ -323,6 +324,8 @@ class DLLExportClass {
         static unsigned char PlacementDistance[MAX_PLAYERS][MAP_CELL_TOTAL];
 
         static unsigned char SpecialKeyFlags[MAX_PLAYERS];
+
+        static VectorClass<TechnoClass*> UnownedObjects;
 
         /*
         ** Mod directories
@@ -354,7 +357,7 @@ unsigned char DLLExportClass::PlacementDistance[MAX_PLAYERS][MAP_CELL_TOTAL];
 unsigned char DLLExportClass::SpecialKeyFlags[MAX_PLAYERS] = { 0U };
 DynamicVectorClass<char *> DLLExportClass::ModSearchPaths;
 bool DLLExportClass::GameOver = false;
-bool DLLExportClass::Hooked = false;
+VectorClass<TechnoClass*> DLLExportClass::UnownedObjects;
 
 /*
 ** Global variables
@@ -1432,195 +1435,10 @@ bool Debug_Write_Shape(const char *file_name, void const * shapefile, int shapen
 }
 
 
-void HookMessageLoop(void)
+const char* GetUnitName(TechnoClass* unit)
 {
-    MSG msg;
-
-    while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
-    {
-        if (!GetMessage(&msg, NULL, 0, 0))
-        {
-            return;
-        }
-
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
+    return Text_String(unit->Techno_Type_Class()->TechnoTypeClass::Full_Name());
 }
-
-bool isKeyDown[256];
-
-bool IsActiveKey(DWORD vkCode, WPARAM action)
-{
-    if ((action == WM_SYSKEYDOWN) || (action == WM_KEYDOWN))
-    {
-        if (!isKeyDown[vkCode])
-        {
-            isKeyDown[vkCode] = true;
-            return true;
-        }
-        
-        return false;
-    }
-    else if ((action == WM_SYSKEYUP) || (action == WM_KEYUP))
-    {
-        isKeyDown[vkCode] = false;
-        return false;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-HHOOK keyboardHook;
-
-LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    static bool isHandlingEvent = false;
-    static bool isControl = false;
-    static bool isAlt = false;
-    static bool isShift = false;
-    static char buffer[64] = { 0 };
-
-    if ((nCode != HC_ACTION) || isHandlingEvent)
-    {
-        return ::CallNextHookEx(NULL, nCode, wParam, lParam);
-    }
-
-    isHandlingEvent = true;
-
-    PKBDLLHOOKSTRUCT keyParam = (PKBDLLHOOKSTRUCT)lParam;
-
-    bool isStateKey = true;
-    switch (keyParam->vkCode)
-    {
-    case VK_LCONTROL:
-    case VK_RCONTROL:
-    case VK_CONTROL:
-        isControl = (wParam == WM_KEYDOWN);
-        break;
-
-    case VK_LSHIFT:
-    case VK_RSHIFT:
-    case VK_SHIFT:
-        isShift = (wParam == WM_KEYDOWN);
-        break;
-
-    case VK_LMENU:
-    case VK_RMENU:
-    case VK_MENU:
-        isAlt = (wParam == WM_KEYDOWN);
-        break;
-
-    default:
-        isStateKey = false;
-        break;
-    }
-
-    if (!isStateKey && ((wParam == WM_SYSKEYDOWN) || (wParam == WM_KEYDOWN) || (wParam == WM_SYSKEYUP) || (wParam == WM_KEYUP)))
-    {
-        if (IsActiveKey(keyParam->vkCode, wParam) && isControl && isAlt)
-        {
-            bool mode = false;
-
-            switch (keyParam->vkCode)
-            {
-            case VK_OEM_2:
-                ModState::TriggerNeedShowHelp();
-                break;
-
-            case VK_N:
-                mode = ModState::ToggleNoDamage();
-                sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_B:
-                mode = ModState::ToggleUnlockBuildOptions();
-                sprintf_s(buffer, "Unlock build mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_I:
-                mode = ModState::ToggleInstantBuild();
-                sprintf_s(buffer, "Instant build mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_P:
-                mode = ModState::ToggleInstantSuperweapons();
-                sprintf_s(buffer, "Instant superweapons mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_H:
-                mode = ModState::ToggleDismissShroud();
-                sprintf_s(buffer, "Dismiss shroud mode: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_U:
-                mode = ModState::ToggleUnlimitedAmmo();
-                sprintf_s(buffer, "Unlimited ammo for aircrafts: %s", mode ? "enabled" : "disabled");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_M:
-                ModState::IncreaseCreditBoost();
-                sprintf_s(buffer, "Credits boosted");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_O:
-                ModState::IncreasePowerBoost();
-                sprintf_s(buffer, "Power boosted");
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_6:
-                ModState::IncreaseMovementBoost();
-                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_4:
-                ModState::DecreaseMovementBoost();
-                sprintf_s(buffer, "Movement boost: %.0f%%", ModState::GetMovementBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_PERIOD:
-                ModState::IncreaseTiberiumGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_COMMA:
-                ModState::DecreaseTiberiumGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetTiberiumGrowthMultiplier());
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_PLUS:
-                ModState::IncreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
-                break;
-
-            case VK_OEM_MINUS:
-                ModState::DecreaseHarvesterBoost();
-                sprintf_s(buffer, "Harvester load: %.0f%% of normal", ModState::GetHarvestorBoost() * 100.0f);
-                ModState::SetDebugMessage(buffer);
-                break;
-            }
-        }
-    }
-
-    isHandlingEvent = false;
-    return ::CallNextHookEx(NULL, nCode, wParam, lParam);
-}
-
 
 /**************************************************************************************************
 * CNC_Advance_Instance -- Process one logic frame
@@ -1687,8 +1505,6 @@ extern "C" __declspec(dllexport) bool __cdecl CNC_Advance_Instance(uint64 player
         //	Keyboard_Process(input);
         //}
 
-        HookMessageLoop();
-
         if (GameToPlay == GAME_GLYPHX_MULTIPLAYER) {
             /*
             ** Process the sidebar. ST - 4/18/2019 11:59AM
@@ -1725,6 +1541,8 @@ extern "C" __declspec(dllexport) bool __cdecl CNC_Advance_Instance(uint64 player
         DLLExportClass::Logic_Switch_Player_Context(old_player_ptr);
     }
     FirstUpdate = false;
+
+    ModState::MarkFrame();
 
     /*
     **	Manage the inter-player message list.  If Manage() returns true, it means
@@ -2091,10 +1909,11 @@ void DLLExportClass::Init(void)
 
     CurrentLocalPlayerIndex = 0;
 
-    if (!Hooked)
+    ModState::Initialize();
+
+    if (ModState::IsKeyboardHook())
     {
-        Hooked = true;
-        keyboardHook = ::SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookProc, NULL, NULL);
+        KeyboardHookInstance.InstallHook();
     }
 }
 
@@ -2113,12 +1932,6 @@ void DLLExportClass::Init(void)
 **************************************************************************************************/
 void DLLExportClass::Shutdown(void)
 {
-    if (Hooked)
-    {
-        Hooked = false;
-        ::UnhookWindowsHookEx(keyboardHook);
-    }
-
     for (int i=0 ; i<ModSearchPaths.Count() ; i++) {
         delete [] ModSearchPaths[i];
     }
@@ -4679,6 +4492,207 @@ void DLLExportClass::Recalculate_Placement_Distances()
     }
 }
 
+void DLLExportClass::Do_ModActions(void)
+{
+    static char buffer[MaxModMessageLength];
+
+    if (PlayerPtr->IsHuman)
+    {
+        if (EventCallback != NULL)
+        {
+            const ModMessage* debugMessage = ModState::GetNextModMessage();
+
+            if (debugMessage != NULL)
+            {
+                On_Message(PlayerPtr, debugMessage->szMessage, debugMessage->iTimeout, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
+            }
+        }
+
+        long creditBoost = ModState::GetCreditBoost();
+        if (creditBoost && (PlayerPtr->Credits < 500000L))
+        {
+            PlayerPtr->Credits += creditBoost;
+            PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
+        }
+
+        int powerBoost = ModState::GetPowerBoost();
+        if (powerBoost && (PlayerPtr->Power < 50000))
+        {
+            PlayerPtr->Power += powerBoost;
+            PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
+        }
+
+        if (ModState::NeedUpdateUnlockBuildOptions())
+        {
+            PlayerPtr->DebugUnlockBuildables = ModState::IsUnlockBuildOptionsEnabled();
+            PlayerPtr->IsRecalcNeeded = true;
+        }
+
+        if (ModState::NeedHealing())
+        {
+            int index;
+            for (index = 0; index < Units.Count(); index++)
+            {
+                UnitClass* unitPtr = Units.Ptr(index);
+                if (unitPtr && !unitPtr->IsInLimbo && (unitPtr->House == PlayerPtr))
+                {
+                    unitPtr->Strength = unitPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Aircraft.Count(); index++)
+            {
+                AircraftClass* aircraftPtr = Aircraft.Ptr(index);
+                if (aircraftPtr && !aircraftPtr->IsInLimbo && (aircraftPtr->House == PlayerPtr))
+                {
+                    aircraftPtr->Strength = aircraftPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Infantry.Count(); index++)
+            {
+                InfantryClass* infantryPtr = Infantry.Ptr(index);
+                if (infantryPtr && !infantryPtr->IsInLimbo && (infantryPtr->House == PlayerPtr))
+                {
+                    infantryPtr->Strength = infantryPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Buildings.Count(); index++)
+            {
+                BuildingClass* buildingPtr = Buildings.Ptr(index);
+                if (buildingPtr && !buildingPtr->IsInLimbo && (buildingPtr->House == PlayerPtr))
+                {
+                    buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
+                }
+            }
+        }
+
+        InfantryType infantryType = INFANTRY_NONE;
+        UnitType unitType = UNIT_NONE;
+        AircraftType aircraftType = AIRCRAFT_NONE;
+
+        if ((infantryType = ModState::GetSpawnInfantryType()) != INFANTRY_NONE)
+        {
+            if (infantryType != INFANTRY_COUNT)
+            {
+                InfantryClass* inf = new InfantryClass(infantryType, PlayerPtr->Class->House);
+                if (inf)
+                {
+                    if (inf->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned infantry: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn infantry at location: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+                    }
+
+                    ModState::SetLastSpawnInfantryType(infantryType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Infantry type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((unitType = ModState::GetSpawnUnitType()) != UNIT_NONE)
+        {
+            if (unitType != UNIT_COUNT)
+            {
+                UnitClass* unit = new UnitClass(unitType, PlayerPtr->Class->House);
+                if (unit)
+                {
+                    if (unit->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned vehicle: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn vehicle at location: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+                    }
+
+                    ModState::SetLastSpawnUnitType(unitType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Vehicle type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((aircraftType = ModState::GetSpawnAircraftType()) != AIRCRAFT_NONE)
+        {
+            if (aircraftType != AIRCRAFT_COUNT)
+            {
+                AircraftClass* air = new AircraftClass(aircraftType, PlayerPtr->Class->House);
+                if (air)
+                {
+                    air->Altitude = 0;
+                    if (air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned aircraft: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn aircraft at location: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+
+                    ModState::SetLastSpawnAircraftType(aircraftType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Aircraft type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+
+        HousesType captureHouse = HOUSE_NONE;
+        if ((captureHouse = ModState::GetCaptureHouse()) != HOUSE_NONE)
+        {
+            auto house = HouseClass::As_Pointer(captureHouse);
+            unsigned int selectedCount = (unsigned int)(CurrentObject.Count());
+            if (UnownedObjects.Length() < selectedCount)
+            {
+                UnownedObjects.Resize(CurrentObject.Count());
+            }
+
+            unsigned int fillIndex = 0;
+            for (unsigned int index = 0; index < selectedCount; index++)
+            {
+                auto object = CurrentObject[index];
+                if (object && (captureHouse != object->Owner()) && (object->Is_Techno()))
+                {
+                    UnownedObjects[fillIndex++] = (TechnoClass*)object;
+                }
+            }
+
+            for (unsigned int index = 0; index < fillIndex; index++)
+            {
+                UnownedObjects[index]->Captured(house, true);
+            }
+        }
+
+        if (ModState::NeedResetSettingsToDefault())
+        {
+            ModState::ResetSettingsToDefault();
+        }
+
+        if (ModState::NeedSaveSettings())
+        {
+            ModState::SaveCurrentSettings();
+        }
+    }
+}
+
 
 /**************************************************************************************************
 * DLLExportClass::Get_Placement_State -- Get a snapshot of legal validity of placing a structure on all map cells
@@ -5894,87 +5908,8 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
         return false;;
     }
 
-    if (PlayerPtr->IsHuman)
-    {
-        if (EventCallback != NULL)
-        {
-            const char* debugMessage = ModState::GetAndClearDebugMessage();
-
-            if (debugMessage != NULL)
-            {
-                On_Message(PlayerPtr, debugMessage, 5, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
-            }
-
-            if (ModState::NeedShowHelp())
-            {
-                const char* helpLine = ModState::GetNextHelpMessageLine();
-                if (helpLine != NULL)
-                {
-                    On_Message(PlayerPtr, helpLine, 30, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, TXT_NONE);
-                }
-            }
-        }
-
-        long creditBoost = ModState::GetCreditBoost();
-        if (creditBoost)
-        {
-            PlayerPtr->Credits += creditBoost;
-            PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
-        }
-
-        int powerBoost = ModState::GetPowerBoost();
-        if (powerBoost)
-        {
-            PlayerPtr->Power += powerBoost;
-            PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
-        }
-
-        if (ModState::NeedUpdateUnlockBuildOptions())
-        {
-            PlayerPtr->DebugUnlockBuildables = ModState::IsUnlockBuildOptionsEnabled();
-            PlayerPtr->IsRecalcNeeded = true;
-        }
-
-        if (ModState::NeedHealing())
-        {
-            int index;
-            for (index = 0; index < Units.Count(); index++)
-            {
-                UnitClass* unitPtr = Units.Ptr(index);
-                if (unitPtr && !unitPtr->IsInLimbo && (unitPtr->House == PlayerPtr))
-                {
-                    unitPtr->Strength = unitPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Aircraft.Count(); index++)
-            {
-                AircraftClass* aircraftPtr = Aircraft.Ptr(index);
-                if (aircraftPtr && !aircraftPtr->IsInLimbo && (aircraftPtr->House == PlayerPtr))
-                {
-                    aircraftPtr->Strength = aircraftPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Infantry.Count(); index++)
-            {
-                InfantryClass* infantryPtr = Infantry.Ptr(index);
-                if (infantryPtr && !infantryPtr->IsInLimbo && (infantryPtr->House == PlayerPtr))
-                {
-                    infantryPtr->Strength = infantryPtr->Class_Of().MaxStrength;
-                }
-            }
-
-            for (index = 0; index < Buildings.Count(); index++)
-            {
-                BuildingClass* buildingPtr = Buildings.Ptr(index);
-                if (buildingPtr && !buildingPtr->IsInLimbo && (buildingPtr->House == PlayerPtr))
-                {
-                    buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
-                }
-            }
-        }
-    }
+    // Perform actions based on the mod state.
+    Do_ModActions();
 
     strncpy(&player_info->Name[0], MPlayerNames[CurrentLocalPlayerIndex], MPLAYER_NAME_MAX);
     player_info->Name[MPLAYER_NAME_MAX - 1] = 0;			// Make sure it's terminated

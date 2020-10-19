@@ -2914,7 +2914,7 @@ bool TechnoClass::Restore_Mission(void)
  * HISTORY:                                                                                    *
  *   05/08/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
-bool TechnoClass::Captured(HouseClass * newowner)
+bool TechnoClass::Captured(HouseClass * newowner, bool forced)
 {
     if (newowner != House) {
 

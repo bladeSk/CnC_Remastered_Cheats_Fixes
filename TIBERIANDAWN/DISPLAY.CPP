@@ -2631,13 +2631,13 @@ ObjectClass * DisplayClass::Prev_Object(ObjectClass * object)
 
 
 /***********************************************************************************************
- * DisplayClass::Pixel_To_Coord -- converts screen coord to COORDINATE                              *
+ * DisplayClass::Pixel_To_Coord -- converts screen coord to COORDINATE                         *
  *                                                                                             *
  * INPUT:                                                                                      *
  *      x,y      pixel coordinates to convert                                                  *
  *                                                                                             *
  * OUTPUT:                                                                                     *
- *      COORDINATE of pixel                                                                         *
+ *      COORDINATE of pixel                                                                    *
  *                                                                                             *
  * WARNINGS:                                                                                   *
  *      none.                                                                                  *
