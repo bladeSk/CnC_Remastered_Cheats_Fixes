@@ -37,7 +37,7 @@ private:
     static DWordSetting<SettingInfo> s_harvesterBoost;
     static DWordSetting<SettingInfo> s_movementBoost;
 
-    static DWordSetting<SettingInfo> s_tiberiumGrowthMultiplier;
+    static DWordSetting<SettingInfo> s_resourceGrowthMultiplier;
 
     static DWordSetting<SettingInfo> s_initialCreditBoost;
     static DWordSetting<SettingInfo> s_initialPowerBoost;
@@ -53,8 +53,8 @@ private:
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyPowerBoost;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseMovementBoost;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseMovementBoost;
-    static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseTiberiumGrowth;
-    static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseTiberiumGrowth;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseResourceGrowth;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseResourceGrowth;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyDecreaseHarvesterBoost;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyIncreaseHarvesterBoost;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySaveSettings;
@@ -260,12 +260,12 @@ public:
         return house->AirspeedBias;
     }
 
-    static bool IncreaseTiberiumGrowthMultiplier(void);
-    static bool DecreaseTiberiumGrowthMultiplier(void);
+    static bool IncreaseResourceGrowthMultiplier(void);
+    static bool DecreaseResourceGrowthMultiplier(void);
 
-    static inline int GetTiberiumGrowthMultiplier(void)
+    static inline int GetResourceGrowthMultiplier(void)
     {
-        return *s_tiberiumGrowthMultiplier;
+        return *s_resourceGrowthMultiplier;
     }
 
     static inline void IncreaseCreditBoost(void)

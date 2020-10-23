@@ -52,7 +52,7 @@ const BooleanSetting<SettingInfo>* ModState::s_booleanSettings[] =
 DWordSetting<SettingInfo> ModState::s_harvesterBoost("HarvesterBoost", { "Harvester boost" }, 100);
 DWordSetting<SettingInfo> ModState::s_movementBoost("MovementBoost", { "Movement boost" }, 10);
 
-DWordSetting<SettingInfo> ModState::s_tiberiumGrowthMultiplier("TiberiumGrowthMultiplier", { "Tiberium growth multiplier" }, 1);
+DWordSetting<SettingInfo> ModState::s_resourceGrowthMultiplier("ResourceGrowthMultiplier", { "Resource growth multiplier" }, 1);
 
 DWordSetting<SettingInfo> ModState::s_initialCreditBoost("InitialCreditBoost", { "Initial credit boost" }, 0);
 DWordSetting<SettingInfo> ModState::s_initialPowerBoost("InitialPowerBoost", { "Initial power boost" }, 0);
@@ -101,13 +101,13 @@ BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseMovementBoos
     "KeyDecreaseMovementBoost",
     { "Decrease movement boost by 50% of normal" },
     { VK_OEM_4 | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 11 });
-BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyIncreaseTiberiumGrowth(
-    "KeyIncreaseTiberiumGrowth",
-    { "Increase Tiberium growth factor" },
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyIncreaseResourceGrowth(
+    "KeyIncreaseResourceGrowth",
+    { "Increase resource growth factor" },
     { VK_OEM_PERIOD | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 12 });
-BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseTiberiumGrowth(
-    "KeyDecreaseTiberiumGrowth",
-    { "Decrease Tiberium growth factor" },
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseResourceGrowth(
+    "KeyDecreaseResourceGrowth",
+    { "Decrease resource growth factor" },
     { VK_OEM_COMMA | KEYSTATE_ALT | KEYSTATE_CTRL, FALSE, 1, 0, WM_USER + 13 });
 BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyDecreaseHarvesterBoost(
     "KeyIncreaseHarvesterBoost",
@@ -159,8 +159,8 @@ BinarySetting<KeyConfiguration, SettingInfo>* ModState::s_keyBindings[] =
     &ModState::s_keyPowerBoost,
     &ModState::s_keyIncreaseMovementBoost,
     &ModState::s_keyDecreaseMovementBoost,
-    &ModState::s_keyIncreaseTiberiumGrowth,
-    &ModState::s_keyDecreaseTiberiumGrowth,
+    &ModState::s_keyIncreaseResourceGrowth,
+    &ModState::s_keyDecreaseResourceGrowth,
     &ModState::s_keyDecreaseHarvesterBoost,
     &ModState::s_keyIncreaseHarvesterBoost,
     &ModState::s_keySpawnInfantry,
@@ -238,7 +238,7 @@ void ModState::Initialize(void)
     s_settings.Add(s_harvesterBoost);
     s_settings.Add(s_movementBoost);
 
-    s_settings.Add(s_tiberiumGrowthMultiplier);
+    s_settings.Add(s_resourceGrowthMultiplier);
 
     s_settings.Add(s_keyHelpKeySetting);
     s_settings.Add(s_keyToggleNoDamage);
@@ -251,8 +251,8 @@ void ModState::Initialize(void)
     s_settings.Add(s_keyPowerBoost);
     s_settings.Add(s_keyIncreaseMovementBoost);
     s_settings.Add(s_keyDecreaseMovementBoost);
-    s_settings.Add(s_keyIncreaseTiberiumGrowth);
-    s_settings.Add(s_keyDecreaseTiberiumGrowth);
+    s_settings.Add(s_keyIncreaseResourceGrowth);
+    s_settings.Add(s_keyDecreaseResourceGrowth);
     s_settings.Add(s_keyDecreaseHarvesterBoost);
     s_settings.Add(s_keyIncreaseHarvesterBoost);
     s_settings.Add(s_keySaveSettings);
@@ -357,22 +357,22 @@ bool ModState::DecreaseMovementBoost(void)
     return false;
 }
 
-bool ModState::IncreaseTiberiumGrowthMultiplier(void)
+bool ModState::IncreaseResourceGrowthMultiplier(void)
 {
-    if (*s_tiberiumGrowthMultiplier < 50)
+    if (*s_resourceGrowthMultiplier < 50)
     {
-        (*s_tiberiumGrowthMultiplier)++;
+        (*s_resourceGrowthMultiplier)++;
         return true;
     }
 
     return false;
 }
 
-bool ModState::DecreaseTiberiumGrowthMultiplier(void)
+bool ModState::DecreaseResourceGrowthMultiplier(void)
 {
-    if (*s_tiberiumGrowthMultiplier > 1)
+    if (*s_resourceGrowthMultiplier > 1)
     {
-        (*s_tiberiumGrowthMultiplier)--;
+        (*s_resourceGrowthMultiplier)--;
         return true;
     }
 
@@ -404,7 +404,7 @@ bool ModState::TriggerNeedShowHelp(void)
 
     if (s_helpMessages[0][0] == 0)
     {
-        sprintf_s(s_helpMessages[0], "Tiberian Dawn Cheat Mod Help:\n");
+        sprintf_s(s_helpMessages[0], "Red Alert Cheat Mod Help:\n");
         sprintf_s(s_helpMessages[1], " \n");
 
         for (int index = 0; index < ARRAYSIZE(s_keyBindings); index++)
@@ -985,12 +985,12 @@ void ModState::LoadSettings(void)
         }
     }
 
-    if (s_tiberiumGrowthMultiplier.IsChanged())
+    if (s_resourceGrowthMultiplier.IsChanged())
     {
-        *s_tiberiumGrowthMultiplier = MAX(1UL, MIN(*s_tiberiumGrowthMultiplier, 50UL));
-        if (*s_tiberiumGrowthMultiplier != s_tiberiumGrowthMultiplier.GetOriginal())
+        *s_resourceGrowthMultiplier = MAX(1UL, MIN(*s_resourceGrowthMultiplier, 50UL));
+        if (*s_resourceGrowthMultiplier != s_resourceGrowthMultiplier.GetOriginal())
         {
-            sprintf_s(buffer, "Tiberium growth multiplier: %d", GetTiberiumGrowthMultiplier());
+            sprintf_s(buffer, "Tiberium growth multiplier: %d", GetResourceGrowthMultiplier());
             AddModMessage(buffer);
         }
     }

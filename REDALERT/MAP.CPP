@@ -1091,7 +1091,7 @@ void MapClass::Logic(void)
 	**	and spread action.
 	*/
 	if (TiberiumScan >= MAP_CELL_TOTAL) {
-        int tries = ModState::GetTiberiumGrowthMultiplier();
+        int tries = ModState::GetResourceGrowthMultiplier();
 		TiberiumScan = 0;
 
 		/*
