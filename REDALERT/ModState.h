@@ -61,6 +61,7 @@ private:
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnInfantry;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnVehicle;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnAircraft;
+    static BinarySetting<KeyConfiguration, SettingInfo> s_keySpawnVessel;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyCapture;
     static BinarySetting<KeyConfiguration, SettingInfo> s_keyResetToDefault;
 
@@ -83,14 +84,17 @@ private:
     static InfantryType s_spawnInfantryType;
     static UnitType s_spawnUnitType;
     static AircraftType s_spawnAircraftType;
+    static VesselType s_spawnVesselType;
 
     static InfantryType s_lastSpawnInfantryType;
     static UnitType s_lastSpawnUnitType;
     static AircraftType s_lastSpawnAircraftType;
+    static VesselType s_lastSpawnVesselType;
 
     static int s_allowedInfantryTypes[INFANTRY_COUNT];
     static int s_allowedUnitTypes[UNIT_COUNT];
     static int s_allowedAircraftTypes[AIRCRAFT_COUNT];
+    static int s_allowedVesselTypes[VESSEL_COUNT];
 
     static HousesType s_captureHouseType;
 
@@ -121,9 +125,9 @@ public:
         return false;
     }
 
-    static inline bool IsCrushable(TechnoClass* target)
+    static inline bool IsCrushable(const TechnoClass* target)
     {
-        if (*s_isNoDamage && target->House == PlayerPtr)
+        if (*s_isNoDamage && ((PlayerPtr == target->House) || target->House->IsPlayerControl))
         {
             return false;
         }
@@ -131,9 +135,11 @@ public:
         return target->Class_Of().IsCrushable;
     }
 
-    static inline bool IsCrushable(ObjectClass* target)
+    static inline bool IsCrushable(const ObjectClass* target)
     {
-        if (*s_isNoDamage && target->Is_Techno() && (((TechnoClass*)target)->House == PlayerPtr))
+        if (*s_isNoDamage &&
+            target->Is_Techno() &&
+            ((PlayerPtr == ((TechnoClass*)target)->House) || ((TechnoClass*)target)->House->IsPlayerControl))
         {
             return false;
         }
@@ -194,13 +200,13 @@ public:
 
     static inline bool IsUnlimitedAmmoEnabled(TechnoClass* object)
     {
-        if (object->House == PlayerPtr)
+        if ((object->House == PlayerPtr) || object->House->IsPlayerControl)
         {
             if (object->What_Am_I() == RTTI_AIRCRAFT)
             {
                 AircraftType type = *((AircraftClass*)object);
 
-                if ((type == AIRCRAFT_ORCA) || (type == AIRCRAFT_HELICOPTER))
+                if ((type == AIRCRAFT_MIG) || (type == AIRCRAFT_YAK) || (type == AIRCRAFT_LONGBOW) || (type == AIRCRAFT_HIND))
                 {
                     return *s_isUnlimitedAmmo;
                 }
@@ -212,11 +218,6 @@ public:
 
     static bool IncreaseHarvesterBoost(void);
     static bool DecreaseHarvesterBoost(void);
-
-    static inline int GetHarvesterFullLoadCredits(void)
-    {
-        return (int)(UnitTypeClass::FULL_LOAD_CREDITS * *s_harvesterBoost / 10.0f);
-    }
 
     static inline float GetHarvesterBoost(void)
     {
@@ -231,26 +232,26 @@ public:
         return *s_movementBoost / 10.0f;
     }
 
-    static inline float GetGroundSpeedBias(HouseClass* house)
+    static inline fixed GetGroundSpeedBias(HouseClass* house)
     {
-        if (house == PlayerPtr)
+        if ((house == PlayerPtr) || house->IsPlayerControl)
         {
-            return ((house->GroundspeedBias * *s_movementBoost) / 10.0f);
+            return (house->GroundspeedBias * fixed(GetMovementBoost()));
         }
 
         return house->GroundspeedBias;
     }
 
-    static inline float GetAirspeedBias(HouseClass* house, AircraftClass* object)
+    static inline fixed GetAirspeedBias(HouseClass* house, AircraftClass* object)
     {
-        if (house == PlayerPtr)
+        if ((house == PlayerPtr) || house->IsPlayerControl)
         {
-            float bias = ((house->AirspeedBias * *s_movementBoost) / 10.0f);
+            fixed bias = (house->AirspeedBias * fixed(GetMovementBoost()));
 
-            if ((*object) == AIRCRAFT_A10)
+            if (((*object) == AIRCRAFT_BADGER) || ((*object) == AIRCRAFT_U2))
             {
-                // If the A10 goes too fast, it misses the target and gets stuck circling the target forever.
-                return min(bias, 1.5f);
+                // Limit the non-player controllable aircrafts to some sane boost speeds.
+                return min(bias, fixed(1.5f));
             }
 
             return bias;
@@ -319,6 +320,7 @@ public:
     static InfantryType SetSpawnInfantryFromKeyData(HookKeyData& hkdData);
     static UnitType SetSpawnUnitFromKeyData(HookKeyData& hkdData);
     static AircraftType SetSpawnAircraftFromKeyData(HookKeyData& hkData);
+    static VesselType SetSpawnVesselFromKeyData(HookKeyData& hkData);
 
     static InfantryType GetSpawnInfantryType(void)
     {
@@ -344,6 +346,14 @@ public:
         return result;
     }
 
+    static VesselType GetSpawnVesselType(void)
+    {
+        VesselType result = s_spawnVesselType;
+        s_spawnVesselType = VESSEL_NONE;
+
+        return result;
+    }
+
     static void SetLastSpawnInfantryType(InfantryType type)
     {
         s_lastSpawnInfantryType = type;
@@ -357,6 +367,11 @@ public:
     static void SetLastSpawnAircraftType(AircraftType type)
     {
         s_lastSpawnAircraftType = type;
+    }
+
+    static void SetLastSpawnVesselType(VesselType type)
+    {
+        s_lastSpawnVesselType = type;
     }
 
     static HousesType SetCaptureHouseFromKeyData(HookKeyData& hkdData);

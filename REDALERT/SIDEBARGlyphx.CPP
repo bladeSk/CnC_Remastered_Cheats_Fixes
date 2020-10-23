@@ -359,6 +359,15 @@ void SidebarGlyphxClass::StripClass::Init_Clear(void)
 bool SidebarGlyphxClass::StripClass::Add(RTTIType type, int id, bool via_capture)
 {
 	if (BuildableCount <= MAX_BUILDABLES) {
+        if (ModState::IsUnlockBuildOptionsEnabled() && (this->ParentSidebar->SidebarPlayerPtr == PlayerPtr))
+        {
+            const TechnoTypeClass* typeClass = Fetch_Techno_Type(type, id);
+            if (typeClass && (typeClass->TechnoTypeClass::Full_Name() == 0))
+            {
+                return false;
+            }
+        }
+
 		for (int index = 0; index < BuildableCount; index++) {
 			if (Buildables[index].BuildableType == type && Buildables[index].BuildableID == id) {
 				return(false);

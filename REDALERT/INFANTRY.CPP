@@ -4215,7 +4215,7 @@ void InfantryClass::Movement_AI(void)
 				/*
 				**	Advance the infantry as far as it should go.
 				*/
-				MPHType maxspeed = MPHType(min(Class->MaxSpeed * SpeedBias * House->GroundspeedBias, MPH_LIGHT_SPEED));
+				MPHType maxspeed = MPHType(min(Class->MaxSpeed * SpeedBias * ModState::GetGroundSpeedBias(House), MPH_LIGHT_SPEED));
 
 				if (IsFormationMove) maxspeed = FormationMaxSpeed;
 

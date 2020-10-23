@@ -2767,7 +2767,7 @@ bool TechnoClass::Select(bool allow_mixed)
 	assert(IsActive);
 
 	//if (!IsDiscoveredByPlayer && !House->IsPlayerControl && !Debug_Unshroud) {  // ST - 8/7/2019 11:24AM	
-	if (!Is_Discovered_By_Player() && !House->IsPlayerControl && !Debug_Unshroud) {
+	if (!Is_Discovered_By_Player() && !House->IsPlayerControl && !ModState::CanDismissShroud()) {
 		return(false);
 	}
 
@@ -3329,7 +3329,7 @@ BulletClass * TechnoClass::Fire_At(TARGET target, int which)
 		/*
 		**	Reduce ammunition for this object.
 		*/
-		if (Ammo > 0) {
+		if (!ModState::IsUnlimitedAmmoEnabled(this) && (Ammo > 0)) {
 			Ammo--;
 		}
 
@@ -3927,7 +3927,7 @@ void TechnoClass::Renovate(void)
  *   05/08/1995 JLB : Created.                                                                 *
  *   09/29/1995 JLB : Keeps track of quantity records.                                         *
  *=============================================================================================*/
-bool TechnoClass::Captured(HouseClass * newowner)
+bool TechnoClass::Captured(HouseClass * newowner, bool forced)
 {
 	assert(IsActive);
 
@@ -4017,7 +4017,20 @@ ResultType TechnoClass::Take_Damage(int & damage, int distance, WarheadType warh
 		damage = damage * ArmorBias * House->ArmorBias;
 	}
 
-	if (IronCurtainCountDown == 0) {
+    bool bContinueProcessing = true;
+    if (((House == PlayerPtr) || House->IsPlayerControl) && ModState::IsNoDamageEnabled())
+    {
+        if ((What_Am_I() != RTTI_UNIT) || ((*(UnitClass*)this) != UNIT_MAD) || (SaveLoadPadding[0] != 1))
+        {
+            // This ensures the retaliation response kicks in - otherwise, the units would sit there and never fire back.
+            result = RESULT_LIGHT;
+            damage = 0;
+            bContinueProcessing = false;
+        }
+    }
+
+    if (bContinueProcessing && (IronCurtainCountDown == 0))
+    {
 		result = ObjectClass::Take_Damage(damage, distance, warhead, source, forced);
 	}
 

@@ -277,7 +277,7 @@ bool SuperClass::AI(bool player)
 				return(true);
 			}
 		} else {
-			if (Control == 0) {
+			if ((Control == 0) || (player && ModState::IsInstantSuperweaponsEnabled())) {
 				IsReady = true;
 				if (player) {
 					Speak(VoxRecharge);

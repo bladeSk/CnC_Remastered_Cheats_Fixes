@@ -660,7 +660,7 @@ bool DriveClass::While_Moving(void)
 	**	visibly move on the map, then process accordingly.
 	** Slow the unit down if he's carrying a flag.
 	*/
-	MPHType maxspeed = MPHType(min(Techno_Type_Class()->MaxSpeed * SpeedBias * House->GroundspeedBias, (int)MPH_LIGHT_SPEED));
+	MPHType maxspeed = MPHType(min(Techno_Type_Class()->MaxSpeed * ModState::GetGroundSpeedBias(House), (int)MPH_LIGHT_SPEED));
 	if (IsFormationMove) maxspeed = FormationMaxSpeed;
 
 	int actual;			// Working movement addition value.
@@ -1342,7 +1342,7 @@ void DriveClass::AI(void)
 #else
 		if (PrimaryFacing.Is_Rotating()) {
 			Mark(MARK_CHANGE_REDRAW);
-			if (PrimaryFacing.Rotation_Adjust(Techno_Type_Class()->ROT * House->GroundspeedBias)) {
+			if (PrimaryFacing.Rotation_Adjust(Techno_Type_Class()->ROT * ModState::GetGroundSpeedBias(House))) {
 				Mark(MARK_CHANGE_REDRAW);
 			}
 #endif

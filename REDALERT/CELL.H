@@ -305,12 +305,12 @@ class CellClass
 		*/
 		void Set_Mapped(HousesType house, bool set = true);
 		void Set_Mapped(HouseClass *player, bool set = true);
-		bool Is_Mapped(HousesType house) const;
-		bool Is_Mapped(HouseClass *player) const;
+		bool Is_Mapped(HousesType house, bool ignoreMod = false) const;
+		bool Is_Mapped(HouseClass *player, bool ignoreMod = false) const;
 		void Set_Visible(HousesType house, bool set = true);
 		void Set_Visible(HouseClass *player, bool set = true);
-		bool Is_Visible(HousesType house) const;
-		bool Is_Visible(HouseClass *player) const;
+		bool Is_Visible(HousesType house, bool ignoreMod = false) const;
+		bool Is_Visible(HouseClass *player, bool ignoreMod = false) const;
 		bool Is_Jamming(HousesType house) const;
 		bool Is_Jamming(HouseClass *player) const;
 

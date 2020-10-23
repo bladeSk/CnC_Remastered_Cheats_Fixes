@@ -3227,8 +3227,13 @@ void CellClass::Set_Mapped(HouseClass *player, bool set)
  * HISTORY:                                                                                    *
  *   3/5/2019 3:13PM - ST                                                                      *
  *=============================================================================================*/
-bool CellClass::Is_Mapped(HousesType house) const
+bool CellClass::Is_Mapped(HousesType house, bool ignoreMod) const
 {
+    if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
+    {
+        return true;
+    }
+
 	int shift = (int) house;
 	return (IsMappedByPlayerMask & (1 << shift)) ? true : false;
 }			  
@@ -3240,10 +3245,16 @@ bool CellClass::Is_Mapped(HousesType house) const
  * HISTORY:                                                                                    *
  *   3/5/2019 3:13PM - ST                                                                      *
  *=============================================================================================*/
-bool CellClass::Is_Mapped(HouseClass *player) const
+bool CellClass::Is_Mapped(HouseClass *player, bool ignoreMod) const
 {
-	if (player && player->Class) {
-		return Is_Mapped(player->Class->House);
+	if (player && player->Class)
+    {
+        if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
+        {
+            return true;
+        }
+
+		return Is_Mapped(player->Class->House, ignoreMod);
 	}
 	return false;
 }			  
@@ -3290,8 +3301,13 @@ void CellClass::Set_Visible(HouseClass *player, bool set)
  * HISTORY:                                                                                    *
  *   3/5/2019 3:16PM - ST                                                                      *
  *=============================================================================================*/
-bool CellClass::Is_Visible(HousesType house) const
+bool CellClass::Is_Visible(HousesType house, bool ignoreMod) const
 {
+    if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
+    {
+        return true;
+    }
+
 	int shift = (int) house;
 	return (IsVisibleByPlayerMask & (1 << shift)) ? true : false;
 }			  
@@ -3303,10 +3319,16 @@ bool CellClass::Is_Visible(HousesType house) const
  * HISTORY:                                                                                    *
  *   3/5/2019 3:16PM - ST                                                                      *
  *=============================================================================================*/
-bool CellClass::Is_Visible(HouseClass *player) const
+bool CellClass::Is_Visible(HouseClass *player, bool ignoreMod) const
 {
-	if (player && player->Class) {
-		return Is_Visible(player->Class->House);
+	if (player && player->Class)
+    {
+        if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
+        {
+            return true;
+        }
+
+		return Is_Visible(player->Class->House, ignoreMod);
 	}
 	return false;
 }

@@ -3147,12 +3147,12 @@ bool BuildingClass::Toggle_Primary(void)
  *   05/03/1995 JLB : Created.                                                                 *
  *   07/05/1995 JLB : Fixed production problem with capturing enemy buildings.                 *
  *=============================================================================================*/
-bool BuildingClass::Captured(HouseClass * newowner)
+bool BuildingClass::Captured(HouseClass * newowner, bool forced)
 {
 	assert(Buildings.ID(this) == ID);
 	assert(IsActive);
 
-	if (Can_Capture() && newowner != House) {
+	if ((Can_Capture() || forced) && newowner != House) {
 #ifdef TOFIX
 		switch (Owner()) {
 			case HOUSE_GOOD:

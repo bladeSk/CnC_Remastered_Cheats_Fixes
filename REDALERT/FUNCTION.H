@@ -133,6 +133,9 @@ UnitTypeClass      ³   BuildingTypeClass      ³  VesselTypeClass
 
 #endif
 
+// Enable to turn on beta mode for the mod.
+#define MOD_BETA
+
 
 /*
 **	The "bool" integral type was defined by the C++ comittee in
@@ -417,6 +420,11 @@ bool PlayMpegMovie(const char* name);
 #endif
 
 #include	"externs.h"
+
+#include "hook.h"
+#include "Settings.h"
+#include "ModState.h"
+#include "KeyboardHook.h"
 
 
 extern int Get_CD_Drive(void);

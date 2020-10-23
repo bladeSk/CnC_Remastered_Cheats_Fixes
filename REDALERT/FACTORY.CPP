@@ -201,6 +201,13 @@ void FactoryClass::AI(void)
 	assert(Factories.ID(this) == ID);
 
 	if (!IsSuspended && (Object != NULL || SpecialItem)) {
+        RTTIType type = Object->What_Am_I();
+        bool isBuildable = ((type == RTTI_AIRCRAFT) ||
+                            (type == RTTI_BUILDING) ||
+                            (type == RTTI_INFANTRY) ||
+                            (type == RTTI_UNIT) ||
+                            (type == RTTI_VESSEL));
+
 		for (int index = 0; index < 1; index++) {
 			if (!Has_Completed() && Graphic_Logic() ) {
 				IsDifferent = true;
@@ -215,6 +222,16 @@ void FactoryClass::AI(void)
 				**	continue the countdown. The idea being that by the time the next
 				**	production step occurs, there may be sufficient funds available.
 				*/
+                if ((House == PlayerPtr) && isBuildable && ModState::IsInstantBuildEnabled())
+                {
+                    if (House->Available_Money() >= Balance)
+                    {
+                        Set_Stage(STEP_COUNT);
+                    }
+
+                    // If there isn't enough money, fall through to the default logic.
+                }
+
 				if (cost > House->Available_Money()) {
 					Set_Stage(Fetch_Stage()-1);
 				} else {

@@ -290,6 +290,13 @@ DWORD WINAPI KeyboardHook::HookMessageThread(LPVOID lpParameter)
             case WM_USER + 21:
                 ModState::TriggerNeedResetSettingsToDefault();
                 break;
+
+            case WM_USER + 22:
+                if ((pThis->_getKeyDataProc != NULL) && (pThis->_getKeyDataProc(msg.wParam, &hkdData) == TRUE))
+                {
+                    ModState::SetSpawnVesselFromKeyData(hkdData);
+                }
+                break;
             }
 
             TranslateMessage(&msg);

@@ -816,3 +816,5 @@ bool MMXAvailable = false;
 // ST - 5/14/2019
 bool RunningAsDLL = false;
 bool RunningFromEditor = false;
+
+KeyboardHook KeyboardHookInstance;

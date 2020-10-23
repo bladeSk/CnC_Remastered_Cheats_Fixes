@@ -1059,7 +1059,7 @@ void RadarClass::Plot_Radar_Pixel(CELL cell)
 		int housebit = (1 << PlayerPtr->Class->House);
 		int celljammed = (*this)[cell].Jammed;
 		int jammed = celljammed & (0xFFFF - housebit);
- 		if (!jammed && ((*this)[cell].IsMapped || Debug_Unshroud)) {
+ 		if (!jammed && ((*this)[cell].IsMapped || ModState::CanDismissShroud())) {
 // 		if (!jammed && ((*this)[cell].IsVisible || Debug_Unshroud)) {
  			color = cellptr->Cell_Color(true);
 			if ( (celljammed & housebit) && (color == TBLACK) ) {
@@ -1803,7 +1803,7 @@ int RadarClass::RTacticalClass::Action(unsigned flags, KeyNumType & key)
 	if (result == 1) {
 		cell = Map.RadarClass::Click_Cell_Calc(x, y);
 		if (cell != -1 && Map.In_Radar(cell)) {
-			shadow	= (!Map[cell].IsMapped && !Debug_Unshroud);
+			shadow	= (!Map[cell].IsMapped && !ModState::CanDismissShroud());
 //			shadow	= (!Map[cell].IsVisible && !Debug_Unshroud);
 			cellx	   = 12;
 			celly	   = 12;
@@ -1897,7 +1897,7 @@ int RadarClass::RTacticalClass::Action(unsigned flags, KeyNumType & key)
 						celly -= Lepton_To_Cell(Map.TacLeptonHeight) / 2;
 						celly = max(celly, Map.MapCellY);
 						cell = XY_Cell(cellx, celly);
-						shadow = (!Map[cell].IsMapped && !Debug_Unshroud);
+						shadow = (!Map[cell].IsMapped && !ModState::CanDismissShroud());
 //						shadow = (!Map[cell].IsVisible && !Debug_Unshroud);
 						Map.Set_Tactical_Position(Cell_Coord(cell));
 						cell = Coord_Cell(Map.DesiredTacticalCoord);

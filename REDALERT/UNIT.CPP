@@ -2842,6 +2842,7 @@ int UnitClass::Mission_Unload(void)
 			Strength = 1;			// assure destruction
 			PendingTimeQuake = true;		// trigger a time quake
 			TimeQuakeCenter = ::As_Target(Center_Coord());
+            TechnoClass::SaveLoadPadding[0] = 1;
 			break;
 
 		case UNIT_CHRONOTANK:
@@ -3345,7 +3346,7 @@ MoveType UnitClass::Can_Enter_Cell(CELL cell, FacingType ) const
 					**	doesn't contain a legitimate weapon.
 					*/
 					bool crusher = Class->IsCrusher;
-					if (!crusher || !obj->Class_Of().IsCrushable) {
+					if (!crusher || !ModState::IsCrushable(obj)) {
 
 						/*
 						**	Any non-allied blockage is considered impassable if the unit
@@ -3446,7 +3447,7 @@ MoveType UnitClass::Can_Enter_Cell(CELL cell, FacingType ) const
 		**	the cell at the same time. In the case of a crushable vehicle in the
 		**	cell, then allow entry.
 		*/
-		if (!cellptr->Cell_Unit() || !cellptr->Cell_Unit()->Class->IsCrushable) {
+		if (!cellptr->Cell_Unit() || !ModState::IsCrushable(cellptr->Cell_Unit())) {
 			return(MOVE_MOVING_BLOCK);
 		}
 	}
@@ -3547,7 +3548,7 @@ ActionType UnitClass::What_Action(ObjectClass const * object) const
 	**	the object as a movable location.
 	*/
 	if (action == ACTION_ATTACK && !Can_Player_Fire()) {
-		if (Class->IsCrusher && object->Class_Of().IsCrushable) {
+		if (Class->IsCrusher && ModState::IsCrushable(object)) {
 			action = ACTION_MOVE;
 		} else {
 			action = ACTION_SELECT;
@@ -4538,7 +4539,7 @@ void UnitClass::Approach_Target(void)
 		**	to drive over the infantry instead of firing on it.
 		*/
 		TechnoClass * target = As_Techno(TarCom);
-		if (Class->IsCrusher && Distance(TarCom) < Rule.CrushDistance && target && ((TechnoTypeClass const &)(target->Class_Of())).IsCrushable) {
+		if (Class->IsCrusher && Distance(TarCom) < Rule.CrushDistance && target && ModState::IsCrushable(target)) {
 			Assign_Destination(TarCom);
 			return;
 		}
@@ -4596,7 +4597,7 @@ void UnitClass::Overrun_Square(CELL cell, bool threaten)
 			ObjectClass * object = cellptr->Cell_Occupier();
 			int crushed = false;
 			while (object != NULL) {
-				if (object->Class_Of().IsCrushable && !House->Is_Ally(object) && Distance(object->Center_Coord()) < CELL_LEPTON_W/2) {
+				if (ModState::IsCrushable(object) && !House->Is_Ally(object) && Distance(object->Center_Coord()) < CELL_LEPTON_W/2) {
 
 #ifdef OBSOLETE
 					/*
@@ -4985,7 +4986,13 @@ void UnitClass::Write_INI(CCINIClass & ini)
  *=============================================================================================*/
 int UnitClass::Credit_Load(void) const
 {
-	return((Gold * Rule.GoldValue) + (Gems * Rule.GemValue));
+	int value = ((Gold * Rule.GoldValue) + (Gems * Rule.GemValue));
+    if (PlayerPtr == House)
+    {
+        value *= ModState::GetHarvesterBoost();
+    }
+
+    return value;
 }
 
 
@@ -5014,7 +5021,7 @@ bool UnitClass::Should_Crush_It(TechnoClass const * it) const
 	**	If this unit cannot crush anything or the candidate object cannot be crushed,
 	**	then it obviously should not try to crush it -- return negative answer.
 	*/
-	if (!Class->IsCrusher || it == NULL || !it->Techno_Type_Class()->IsCrushable) return(false);
+	if (!Class->IsCrusher || it == NULL || !ModState::IsCrushable(it)) return(false);
 
 	/*
 	**	Objects that are far away should really be fired upon rather than crushed.

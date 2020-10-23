@@ -299,7 +299,7 @@ class BuildingClass : public TechnoClass
 		virtual FireErrorType Can_Fire(TARGET, int which) const;
 		virtual TARGET Greatest_Threat(ThreatType threat) const;
 		virtual ResultType Take_Damage(int & damage, int distance, WarheadType warhead, TechnoClass * source=0, bool forced=false);
-		virtual bool Captured(HouseClass * newowner);
+		virtual bool Captured(HouseClass * newowner, bool forced = false);
 		void Update_Radar_Spied(void);
 
 		/*

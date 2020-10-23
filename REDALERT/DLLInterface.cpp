@@ -301,6 +301,8 @@ class DLLExportClass {
 
 		static void Calculate_Placement_Distances(BuildingTypeClass* placement_type, unsigned char* placement_distance);
 
+        static void Do_ModActions(void);
+
 		static int CurrentDrawCount;
 		static int TotalObjectCount;
 		static int SortOrder;
@@ -329,6 +331,8 @@ class DLLExportClass {
 		static unsigned char PlacementDistance[MAX_PLAYERS][MAP_CELL_TOTAL];
 
 		static unsigned char SpecialKeyFlags[MAX_PLAYERS];
+
+        static VectorClass<TechnoClass*> UnownedObjects;
 
 		/*
 		** Mod directories
@@ -362,6 +366,7 @@ unsigned char DLLExportClass::SpecialKeyFlags[MAX_PLAYERS] = { 0U };
 DynamicVectorClass<char *> DLLExportClass::ModSearchPaths;
 std::set<int64> DLLExportClass::MessagesSent;
 bool DLLExportClass::GameOver = false;
+VectorClass<TechnoClass*> DLLExportClass::UnownedObjects;
 
 
 
@@ -1771,6 +1776,8 @@ extern "C" __declspec(dllexport) bool __cdecl CNC_Advance_Instance(uint64 player
 	}
 	FirstUpdate = false;
 
+    ModState::MarkFrame();
+
 	TimeQuake = false;
 #ifdef FIXIT_CSII	//	checked - ajw 9/28/98
 	if (!PendingTimeQuake) {
@@ -2204,6 +2211,13 @@ void DLLExportClass::Init(void)
 		SpecialBackup = new SpecialClass;
 	}
 	memcpy(SpecialBackup, &Special, sizeof(SpecialClass));
+
+    ModState::Initialize();
+
+    if (ModState::IsKeyboardHook())
+    {
+        KeyboardHookInstance.InstallHook();
+    }
 }
 
 
@@ -3771,7 +3785,7 @@ bool DLLExportClass::Get_Layer_State(uint64 player_id, unsigned char *buffer_in,
 					}
 				}
 
-				if (Debug_Map || Debug_Unshroud || (object->IsDown && !object->IsInLimbo)) {
+				if (Debug_Map || ModState::CanDismissShroud() || (object->IsDown && !object->IsInLimbo)) {
 					int	x, y;
 					Map.Coord_To_Pixel(object->Render_Coord(), x, y);
 					
@@ -5052,6 +5066,274 @@ void DLLExportClass::Recalculate_Placement_Distances()
 	}
 }
 
+
+const char* GetUnitName(TechnoClass* unit)
+{
+    TechnoTypeClass* pClass = unit->Techno_Type_Class();
+    if (pClass)
+    {
+        int iNameId = unit->Techno_Type_Class()->TechnoTypeClass::Full_Name();
+        if (iNameId != 0)
+        {
+            return Text_String(iNameId);
+        }
+    }
+
+    return "Unknown unit name";
+}
+
+void DLLExportClass::Do_ModActions(void)
+{
+    static char buffer[MaxModMessageLength];
+
+    if (PlayerPtr->IsHuman)
+    {
+        if (EventCallback != NULL)
+        {
+            const ModMessage* debugMessage = ModState::GetNextModMessage();
+
+            if (debugMessage != NULL)
+            {
+                On_Message(PlayerPtr, debugMessage->szMessage, debugMessage->iTimeout, EventCallbackMessageEnum::MESSAGE_TYPE_DIRECT, -1);
+            }
+        }
+
+        long creditBoost = ModState::GetCreditBoost();
+        if (creditBoost && (PlayerPtr->Credits < 500000L))
+        {
+            PlayerPtr->Credits += creditBoost;
+            PlayerPtr->Credits = Min(PlayerPtr->Credits, 500000L);
+        }
+
+        int powerBoost = ModState::GetPowerBoost();
+        if (powerBoost && (PlayerPtr->Power < 50000))
+        {
+            PlayerPtr->Power += powerBoost;
+            PlayerPtr->Power = Min(PlayerPtr->Power, 50000);
+        }
+
+        if (ModState::NeedUpdateUnlockBuildOptions())
+        {
+            PlayerPtr->DebugUnlockBuildables = ModState::IsUnlockBuildOptionsEnabled();
+            PlayerPtr->IsRecalcNeeded = true;
+        }
+
+        if (ModState::NeedHealing())
+        {
+            int index;
+            for (index = 0; index < Units.Count(); index++)
+            {
+                UnitClass* unitPtr = Units.Ptr(index);
+                if (unitPtr && !unitPtr->IsInLimbo && ((unitPtr->House == PlayerPtr) || unitPtr->House->IsPlayerControl))
+                {
+                    unitPtr->Strength = unitPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Aircraft.Count(); index++)
+            {
+                AircraftClass* aircraftPtr = Aircraft.Ptr(index);
+                if (aircraftPtr && !aircraftPtr->IsInLimbo && ((aircraftPtr->House == PlayerPtr) || aircraftPtr->House->IsPlayerControl))
+                {
+                    aircraftPtr->Strength = aircraftPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Infantry.Count(); index++)
+            {
+                InfantryClass* infantryPtr = Infantry.Ptr(index);
+                if (infantryPtr && !infantryPtr->IsInLimbo && ((infantryPtr->House == PlayerPtr) || infantryPtr->House->IsPlayerControl))
+                {
+                    infantryPtr->Strength = infantryPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Vessels.Count(); index++)
+            {
+                VesselClass* vesselPtr = Vessels.Ptr(index);
+                if (vesselPtr && !vesselPtr->IsInLimbo && ((vesselPtr->House == PlayerPtr) || vesselPtr->House->IsPlayerControl))
+                {
+                    vesselPtr->Strength = vesselPtr->Class_Of().MaxStrength;
+                }
+            }
+
+            for (index = 0; index < Buildings.Count(); index++)
+            {
+                BuildingClass* buildingPtr = Buildings.Ptr(index);
+                if (buildingPtr && !buildingPtr->IsInLimbo && ((buildingPtr->House == PlayerPtr) || buildingPtr->House->IsPlayerControl))
+                {
+                    buildingPtr->Strength = buildingPtr->Class_Of().MaxStrength;
+                }
+            }
+        }
+
+        InfantryType infantryType = INFANTRY_NONE;
+        UnitType unitType = UNIT_NONE;
+        AircraftType aircraftType = AIRCRAFT_NONE;
+        VesselType vesselType = VESSEL_NONE;
+
+        if ((infantryType = ModState::GetSpawnInfantryType()) != INFANTRY_NONE)
+        {
+            if (infantryType != INFANTRY_COUNT)
+            {
+                InfantryClass* inf = new InfantryClass(infantryType, PlayerPtr->Class->House);
+                if (inf)
+                {
+                    if (inf->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned infantry: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn infantry at location: %s", GetUnitName(inf));
+                        ModState::AddModMessage(buffer);
+
+                        delete inf;
+                    }
+
+                    ModState::SetLastSpawnInfantryType(infantryType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Infantry type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((unitType = ModState::GetSpawnUnitType()) != UNIT_NONE)
+        {
+            if (unitType != UNIT_COUNT)
+            {
+                UnitClass* unit = new UnitClass(unitType, PlayerPtr->Class->House);
+                if (unit)
+                {
+                    if (unit->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned vehicle: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn vehicle at location: %s", GetUnitName(unit));
+                        ModState::AddModMessage(buffer);
+
+                        delete unit;
+                    }
+
+                    ModState::SetLastSpawnUnitType(unitType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Vehicle type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((aircraftType = ModState::GetSpawnAircraftType()) != AIRCRAFT_NONE)
+        {
+            if (aircraftType != AIRCRAFT_COUNT)
+            {
+                AircraftClass* air = new AircraftClass(aircraftType, PlayerPtr->Class->House);
+                if (air)
+                {
+                    if (air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned aircraft: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn aircraft at location: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+
+                        delete air;
+                    }
+
+                    ModState::SetLastSpawnAircraftType(aircraftType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Aircraft type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+        else if ((vesselType = ModState::GetSpawnVesselType()) != VESSEL_NONE)
+        {
+            if (vesselType != VESSEL_COUNT)
+            {
+                VesselClass* air = new VesselClass(vesselType, PlayerPtr->Class->House);
+                if (air)
+                {
+                    if (air->Unlimbo(Map.Pixel_To_Coord(DLLForceMouseX, DLLForceMouseY), DIR_N))
+                    {
+                        sprintf_s(buffer, "Spawned vessel: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+                    }
+                    else
+                    {
+                        sprintf_s(buffer, "Could not spawn vessel at location: %s", GetUnitName(air));
+                        ModState::AddModMessage(buffer);
+
+                        delete air;
+                    }
+
+                    ModState::SetLastSpawnVesselType(vesselType);
+                }
+            }
+            else
+            {
+                sprintf_s(buffer, "Vessel type not found.");
+                ModState::AddModMessage(buffer);
+            }
+        }
+
+        HousesType captureHouse = HOUSE_NONE;
+        if ((captureHouse = ModState::GetCaptureHouse()) != HOUSE_NONE)
+        {
+            auto house = HouseClass::As_Pointer(captureHouse);
+            unsigned int selectedCount = (unsigned int)(CurrentObject.Count());
+            if (UnownedObjects.Length() < selectedCount)
+            {
+                UnownedObjects.Resize(CurrentObject.Count());
+            }
+
+            unsigned int fillIndex = 0;
+            for (unsigned int index = 0; index < selectedCount; index++)
+            {
+                auto object = CurrentObject[index];
+                if (object && (captureHouse != object->Owner()) && (object->Is_Techno()))
+                {
+                    UnownedObjects[fillIndex++] = (TechnoClass*)object;
+                }
+            }
+
+            for (unsigned int index = 0; index < fillIndex; index++)
+            {
+                UnownedObjects[index]->Captured(house, true);
+            }
+
+            for (unsigned int index = 0; index < fillIndex; index++)
+            {
+                UnownedObjects[index]->Select();
+            }
+        }
+
+        if (ModState::NeedResetSettingsToDefault())
+        {
+            ModState::ResetSettingsToDefault();
+        }
+
+        if (ModState::NeedSaveSettings())
+        {
+            ModState::SaveCurrentSettings();
+        }
+    }
+}
+
+
+
 /**************************************************************************************************
 * DLLExportClass::Get_Placement_State -- Get a snapshot of legal validity of placing a structure on all map cells
 *
@@ -6140,8 +6422,8 @@ bool DLLExportClass::Get_Shroud_State(uint64 player_id, unsigned char *buffer_in
 
 			CNCShroudEntryStruct &shroud_entry = shroud->Entries[entry_index];
 
-			shroud_entry.IsVisible = cellptr->Is_Visible(PlayerPtr);
-			shroud_entry.IsMapped = cellptr->Is_Mapped(PlayerPtr);
+			shroud_entry.IsVisible = ModState::CanDismissShroud() || cellptr->Is_Visible(PlayerPtr);
+			shroud_entry.IsMapped = ModState::CanDismissShroud() || cellptr->Is_Mapped(PlayerPtr);
 			shroud_entry.IsJamming = cellptr->Is_Jamming(PlayerPtr);
 			//shroud_entry.IsVisible = cellptr->IsVisible;
 			//shroud_entry.IsMapped = cellptr->IsMapped;
@@ -6289,6 +6571,9 @@ bool DLLExportClass::Get_Player_Info_State(uint64 player_id, unsigned char *buff
 	if (PlayerPtr == NULL) {
 		return false;;
 	}
+
+    // Perform actions based on the mod state.
+    Do_ModActions();
 
 	if (Session.Players.Count() > CurrentLocalPlayerIndex) {
 		strncpy(&player_info->Name[0], Session.Players[CurrentLocalPlayerIndex]->Name, MPLAYER_NAME_MAX);
@@ -6489,7 +6774,7 @@ bool DLLExportClass::Get_Dynamic_Map_State(uint64 player_id, unsigned char *buff
 					**	If there is a portion of the underlying icon that could be visible,
 					**	then draw it.  Also draw the cell if the shroud is off.
 					*/
-					if (GAME_TO_PLAY == GAME_GLYPHX_MULTIPLAYER || cellptr->IsMapped || Debug_Unshroud) {
+					if (GAME_TO_PLAY == GAME_GLYPHX_MULTIPLAYER || cellptr->IsMapped || ModState::CanDismissShroud()) {
 						Cell_Class_Draw_It(dynamic_map, entry_index, cellptr, xpixel, ypixel, debug_output);
 					}
 

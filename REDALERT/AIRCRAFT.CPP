@@ -3022,7 +3022,7 @@ bool AircraftClass::Process_Landing(void)
 //					Set_Speed(distance/2);
 //				}
 
-				Set_Speed(Class->LandingSpeed / House->AirspeedBias);
+				Set_Speed(Class->LandingSpeed / ModState::GetAirspeedBias(House, this));
 				break;
 		}
 
@@ -3596,7 +3596,7 @@ void AircraftClass::Set_Speed(int speed)
 
 	FootClass::Set_Speed(speed);
 
-	MPHType sp = MPHType(min(Class->MaxSpeed * SpeedBias * House->AirspeedBias, MPH_LIGHT_SPEED));
+	MPHType sp = MPHType(min(Class->MaxSpeed * SpeedBias * ModState::GetAirspeedBias(House, this), MPH_LIGHT_SPEED));
 	Fly_Speed(speed, sp);
 }
 

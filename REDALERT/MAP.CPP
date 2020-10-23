@@ -1091,17 +1091,20 @@ void MapClass::Logic(void)
 	**	and spread action.
 	*/
 	if (TiberiumScan >= MAP_CELL_TOTAL) {
+        int tries = ModState::GetTiberiumGrowthMultiplier();
 		TiberiumScan = 0;
 
 		/*
 		**	Growth logic.
 		*/
 		if (TiberiumGrowthCount) {
-			for (int i = 0; i < TiberiumGrowthCount; i++) {
-				CELL cell = TiberiumGrowth[i];
-				CellClass * newcell = &(*this)[cell];
-				newcell->Grow_Tiberium();
-			}
+            for (int t = 0; t < tries; t++) {
+                for (int i = 0; i < TiberiumGrowthCount; i++) {
+                    CELL cell = TiberiumGrowth[i];
+                    CellClass * newcell = &(*this)[cell];
+                    newcell->Grow_Tiberium();
+                }
+            }
 		}
 		TiberiumGrowthCount = 0;
 		TiberiumGrowthExcess = 0;

@@ -49,6 +49,7 @@
 #include	"options.h"
 #include	"infantry.H"
 #include "DSOUND.H"
+#include "KeyboardHook.h"
 
 extern char _staging_buffer[32000];
 extern "C" {
@@ -503,5 +504,7 @@ extern MPGSettings* MpgSettings;
 extern "C" bool MMXAvailable;
 
 extern bool ShareAllyVisibility;
+
+extern KeyboardHook KeyboardHookInstance;
 
 #endif

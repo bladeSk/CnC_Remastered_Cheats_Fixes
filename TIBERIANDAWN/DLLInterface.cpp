@@ -4588,6 +4588,8 @@ void DLLExportClass::Do_ModActions(void)
                     {
                         sprintf_s(buffer, "Could not spawn infantry at location: %s", GetUnitName(inf));
                         ModState::AddModMessage(buffer);
+
+                        delete inf;
                     }
 
                     ModState::SetLastSpawnInfantryType(infantryType);
@@ -4615,6 +4617,8 @@ void DLLExportClass::Do_ModActions(void)
                     {
                         sprintf_s(buffer, "Could not spawn vehicle at location: %s", GetUnitName(unit));
                         ModState::AddModMessage(buffer);
+
+                        delete unit;
                     }
 
                     ModState::SetLastSpawnUnitType(unitType);
@@ -4643,6 +4647,8 @@ void DLLExportClass::Do_ModActions(void)
                     {
                         sprintf_s(buffer, "Could not spawn aircraft at location: %s", GetUnitName(air));
                         ModState::AddModMessage(buffer);
+
+                        delete air;
                     }
 
                     ModState::SetLastSpawnAircraftType(aircraftType);

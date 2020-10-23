@@ -1337,7 +1337,7 @@ void DisplayClass::Refresh_Cells(CELL cell, short const * list)
  *   04/30/1994 JLB : Converted to member function.                                            *
  *   08/05/2019  ST : Added house parameter so we can do this per player                       ** 
  *=============================================================================================*/
-int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house) const
+int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house, bool ignoreMod) const
 {
 	static char const _shadow[256]={
 		-1,33, 2, 2,34,37, 2, 2,
@@ -1397,9 +1397,9 @@ int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house) const
 	/*
 	**	Presume solid black if that is what is here already.
 	*/
-	if (!cellptr->Is_Visible(house) && !cellptr->Is_Mapped(house)) value = -2;
+	if (!cellptr->Is_Visible(house, ignoreMod) && !cellptr->Is_Mapped(house, ignoreMod)) value = -2;
 
-	if (cellptr->Is_Mapped(house) /*&& !cellptr->IsVisible*/) {
+	if (cellptr->Is_Mapped(house, ignoreMod) /*&& !cellptr->IsVisible*/) {
 		/*
 		** Build an index into the lookup table using all 8 surrounding cells.
 		** We're mapping a revealed cell and we only care about the existence
@@ -1407,21 +1407,21 @@ int DisplayClass::Cell_Shadow(CELL cell, HouseClass *house) const
 		** goes around the cell clockwise, so 0x80 = directly north.
 		*/
 		cell -= MAP_CELL_W + 1; cellptr -= MAP_CELL_W + 1;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x40;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x40;
 		cell++; cellptr++;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x80;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x80;
 		cell++; cellptr++;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x01;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x01;
 		cell += MAP_CELL_W - 2; cellptr += MAP_CELL_W - 2;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x20;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x20;
 		cell += 2; cellptr += 2;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x02;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x02;
 		cell += MAP_CELL_W - 2; cellptr += MAP_CELL_W - 2;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x10;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x10;
 		cell++; cellptr++;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x08;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x08;
 		cell++; cellptr++;
-		if (!cellptr->Is_Mapped(house) && In_Radar(cell)) index |= 0x04;
+		if (!cellptr->Is_Mapped(house, ignoreMod) && In_Radar(cell)) index |= 0x04;
 
 		value = _shadow[index];
 	}
@@ -1619,8 +1619,8 @@ bool DisplayClass::Map_Cell(CELL cell, HouseClass * house, bool check_radar_spie
 	**	Don't bother remapping this cell if it is already mapped.
 	*/
 #if (1)	
-	if (cellptr->Is_Mapped(house)) {
-		if (!cellptr->Is_Visible(house)) {
+	if (cellptr->Is_Mapped(house, true)) {
+		if (!cellptr->Is_Visible(house, true)) {
 			cellptr->Redraw_Objects();
 		}
 		return(false);
@@ -1641,7 +1641,7 @@ bool DisplayClass::Map_Cell(CELL cell, HouseClass * house, bool check_radar_spie
 	// Set per player. ST - 8/6/2019 10:18AM
 	cellptr->Set_Mapped(house);
 	cellptr->Redraw_Objects();
-	if (Cell_Shadow(cell, house) == -1) {
+	if (Cell_Shadow(cell, house, true) == -1) {
 		cellptr->Set_Visible(house);
 	}
 
@@ -1674,17 +1674,17 @@ bool DisplayClass::Map_Cell(CELL cell, HouseClass * house, bool check_radar_spie
 
 #if (1)
 		// New client/server friendly code
-		if (c != cell && !cptr->Is_Visible(house)) {
-			shadow = Cell_Shadow(c, house);
+		if (c != cell && !cptr->Is_Visible(house, true)) {
+			shadow = Cell_Shadow(c, house, true);
 
 			if (shadow == -1) {
-				if (!cptr->Is_Mapped(house)) {
+				if (!cptr->Is_Mapped(house, true)) {
 					Map_Cell(c, house, check_radar_spied, false);
 				} else {
 					cptr->Set_Visible(house);
 				}
 			} else {
-				if (shadow != -2 && !cptr->Is_Mapped(house)) {
+				if (shadow != -2 && !cptr->Is_Mapped(house, true)) {
 					Map_Cell(c, house, check_radar_spied, false);
 				}
 			}
@@ -2376,7 +2376,7 @@ void DisplayClass::Redraw_Icons(void)
 					**	then draw it.  Also draw the cell if the shroud is off.
 					*/
 					//if (cellptr->IsMapped || Debug_Unshroud) {
-					if (cellptr->Is_Mapped(PlayerPtr) || Debug_Unshroud) {		// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
+					if (cellptr->Is_Mapped(PlayerPtr) || ModState::CanDismissShroud()) {		// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
 						cellptr->Draw_It(xpixel, ypixel);
 					}
 
@@ -2385,7 +2385,7 @@ void DisplayClass::Redraw_Icons(void)
 					**	process will occur.  Only draw the shadow if Debug_Unshroud is false.
 					*/
 					//if (!cellptr->IsVisible && !Debug_Unshroud) {
-					if (!cellptr->Is_Visible(PlayerPtr) && !Debug_Unshroud) {	// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
+					if (!cellptr->Is_Visible(PlayerPtr) && !ModState::CanDismissShroud()) {	// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
 						IsShadowPresent = true;
 					}
 				}
@@ -2419,7 +2419,7 @@ void DisplayClass::Redraw_OIcons(void)
 					**	then draw it.  Also draw the cell if the shroud is off.
 					*/
 					//if (cellptr->IsMapped || Debug_Unshroud) {
-					if (cellptr->Is_Mapped(PlayerPtr) || Debug_Unshroud) {		// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
+					if (cellptr->Is_Mapped(PlayerPtr) || ModState::CanDismissShroud()) {		// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
 						cellptr->Draw_It(xpixel, ypixel, true);
 					}
 				}
@@ -3130,7 +3130,7 @@ int DisplayClass::TacticalClass::Action(unsigned flags, KeyNumType & key)
 	if (coord) {
 
 		//shadow = (!Map[cell].IsMapped && !Debug_Unshroud);
-		shadow = (!Map[cell].Is_Mapped(PlayerPtr) && !Debug_Unshroud);		// Use PlayerPtr since we won't be rendering in MP. ST - 8/6/2019 10:49AM
+		shadow = (!Map[cell].Is_Mapped(PlayerPtr) && !ModState::CanDismissShroud());		// Use PlayerPtr since we won't be rendering in MP. ST - 8/6/2019 10:49AM
 		x -= Map.TacPixelX;
 		y -= Map.TacPixelY;
 
@@ -3356,7 +3356,7 @@ int DisplayClass::TacticalClass::Selection_At_Mouse(unsigned flags, KeyNumType &
 	CELL cell = Coord_Cell(coord);
 
 	if (coord) {
-		bool shadow = (!Map[cell].Is_Visible(PlayerPtr) && !Debug_Unshroud);					// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
+		bool shadow = (!Map[cell].Is_Visible(PlayerPtr) && !ModState::CanDismissShroud());					// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
 		x -= Map.TacPixelX;
 		y -= Map.TacPixelY;
 
@@ -3436,7 +3436,7 @@ int DisplayClass::TacticalClass::Command_Object(unsigned flags, KeyNumType & key
 	ActionType action = ACTION_NONE;
 
 	if (coord) {
-		bool shadow = (!Map[cell].Is_Mapped(PlayerPtr) && !Debug_Unshroud);					// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
+		bool shadow = (!Map[cell].Is_Mapped(PlayerPtr) && !ModState::CanDismissShroud());					// Use PlayerPtr since we won't be rendering in MP. ST - 3/6/2019 2:49PM
 		x -= Map.TacPixelX;
 		y -= Map.TacPixelY;
 

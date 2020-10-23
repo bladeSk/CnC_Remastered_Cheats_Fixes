@@ -273,7 +273,7 @@ bool SuperClass::AI(bool player)
                 return(true);
             }
         } else {
-            if (Control.Expired() || ModState::IsInstantSuperweaponsEnabled()) {
+            if (Control.Expired() || (player && ModState::IsInstantSuperweaponsEnabled())) {
                 IsReady = true;
                 if (player && VoxRecharge != VOX_NONE) {
                     Speak(VoxRecharge);

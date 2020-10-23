@@ -181,7 +181,7 @@ class DisplayClass: public MapClass
 		ObjectClass * Cell_Object(CELL cell, int x=0, int y=0) const;
 		ObjectClass * Next_Object(ObjectClass * object) const;
 		ObjectClass * Prev_Object(ObjectClass * object) const;
-		int Cell_Shadow(CELL cell, HouseClass *house) const;
+		int Cell_Shadow(CELL cell, HouseClass *house, bool ignoreMod = false) const;
 		short const * Text_Overlap_List(char const * text, int x, int y) const;
 		bool Is_Spot_Free(COORDINATE coord) const;
 		COORDINATE Closest_Free_Spot(COORDINATE coord, bool any=false) const;

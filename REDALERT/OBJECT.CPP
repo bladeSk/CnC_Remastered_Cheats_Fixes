@@ -1326,7 +1326,7 @@ bool ObjectClass::Render(bool forced) const
 	COORDINATE coord = Render_Coord();
 	CELL cell = Coord_Cell(coord);
 
-	if (Debug_Map || Debug_Unshroud || ((forced || IsToDisplay) && IsDown && !IsInLimbo)) {
+	if (Debug_Map || ModState::CanDismissShroud() || ((forced || IsToDisplay) && IsDown && !IsInLimbo)) {
 		const_cast<ObjectClass*>(this)->IsToDisplay = false;		// added const_cast ST - 5/9/2019
 
 		if (Map.Coord_To_Pixel(coord, x, y)) {

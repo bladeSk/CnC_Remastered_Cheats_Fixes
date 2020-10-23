@@ -900,6 +900,12 @@
     <ClCompile Include="DLLInterfaceEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="KeyboardHook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABSTRACT.H">
@@ -1767,6 +1773,15 @@
       <Filter>Source Files\Resource</Filter>
     </ClInclude>
     <ClInclude Include="DLLInterfaceVersion.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyboardHook.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModState.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

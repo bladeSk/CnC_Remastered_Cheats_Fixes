@@ -1,21 +1,21 @@
 #include "function.h"
 
 #ifdef MOD_BETA
-static const DWORD ModVersion = 0x02110000;
-static const DWORD ForceConfigResetMaxVersion = 0x02070000;
+static const DWORD ModVersion = 0x00010000;
+static const DWORD ForceConfigResetMaxVersion = 0x00000000;
 
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2254499142";
-static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Tiberian-Dawn-Cheat-Mod-(BETA)";
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\0000000000";
+static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod-(BETA)";
 
-static const char* StartupMessage = "Tiberian Dawn Cheat Mod (BETA) started.\n";
+static const char* StartupMessage = "Red Alert Cheat Mod (BETA) started.\n";
 #else
-static const DWORD ModVersion = 0x03040000;
-static const DWORD ForceConfigResetMaxVersion = 0x03000000;
+static const DWORD ModVersion = 0x01000000;
+static const DWORD ForceConfigResetMaxVersion = 0x01000000;
 
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2236325862";
-static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Tiberian-Dawn-Cheat-Mod";
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\0000000000";
+static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod";
 
-static const char* StartupMessage = "Tiberian Dawn Cheat Mod started.\n";
+static const char* StartupMessage = "Red Alert Cheat Mod started.\n";
 #endif
 
 static const DWORD KnownBadConfigVersions[] = {
@@ -141,6 +141,10 @@ BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keyResetToDefault(
     "KeyResetToDefault",
     { "Reset all values to default" },
     { VK_R | KEYSTATE_ALT | KEYSTATE_CTRL | KEYSTATE_SHIFT, FALSE, 1, 0, WM_USER + 21 });
+BinarySetting<KeyConfiguration, SettingInfo> ModState::s_keySpawnVessel(
+    "KeySpawnVessel",
+    { "Spawn ship" },
+    { VK_S | KEYSTATE_ALT | KEYSTATE_SHIFT, TRUE, 3, VK_S | KEYSTATE_ALT | KEYSTATE_SHIFT, WM_USER + 22 });
 
 BinarySetting<KeyConfiguration, SettingInfo>* ModState::s_keyBindings[] =
 {
@@ -162,6 +166,7 @@ BinarySetting<KeyConfiguration, SettingInfo>* ModState::s_keyBindings[] =
     &ModState::s_keySpawnInfantry,
     &ModState::s_keySpawnVehicle,
     &ModState::s_keySpawnAircraft,
+    &ModState::s_keySpawnVessel,
     &ModState::s_keyCapture,
 
     &ModState::s_keySaveSettings,
@@ -184,14 +189,17 @@ bool ModState::s_needResetSettingsToDefault = false;
 InfantryType ModState::s_spawnInfantryType = INFANTRY_NONE;
 UnitType ModState::s_spawnUnitType = UNIT_NONE;
 AircraftType ModState::s_spawnAircraftType = AIRCRAFT_NONE;
+VesselType ModState::s_spawnVesselType = VESSEL_NONE;
 
 InfantryType ModState::s_lastSpawnInfantryType = INFANTRY_NONE;
 UnitType ModState::s_lastSpawnUnitType = UNIT_NONE;
 AircraftType ModState::s_lastSpawnAircraftType = AIRCRAFT_NONE;
+VesselType ModState::s_lastSpawnVesselType = VESSEL_NONE;
 
 int ModState::s_allowedInfantryTypes[INFANTRY_COUNT] = { INFANTRY_NONE };
 int ModState::s_allowedUnitTypes[UNIT_COUNT] = { UNIT_NONE };
 int ModState::s_allowedAircraftTypes[AIRCRAFT_COUNT] = { AIRCRAFT_NONE };
+int ModState::s_allowedVesselTypes[VESSEL_COUNT] = { VESSEL_NONE };
 
 HousesType ModState::s_captureHouseType = HOUSE_NONE;
 
@@ -567,7 +575,7 @@ UnitType ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
         {
             UnitTypeClass const & typeClass = UnitTypeClass::As_Reference(index);
 
-            if (!IsSpawnable(&typeClass) && (typeClass.Type != UNIT_VICE))
+            if (!IsSpawnable(&typeClass))
             {
                 continue;
             }
@@ -628,6 +636,45 @@ AircraftType ModState::SetSpawnAircraftFromKeyData(HookKeyData& hkdData)
         AIRCRAFT_COUNT;
 
     return s_spawnAircraftType;
+}
+
+VesselType ModState::SetSpawnVesselFromKeyData(HookKeyData& hkdData)
+{
+    if (s_spawnVesselType != VESSEL_NONE)
+    {
+        return VESSEL_NONE;
+    }
+
+    if (s_allowedVesselTypes[0] == VESSEL_NONE)
+    {
+        int fillIndex = 0;
+
+        for (VesselType index = VESSEL_FIRST; index < VESSEL_COUNT; index++)
+        {
+            VesselTypeClass const & typeClass = VesselTypeClass::As_Reference(index);
+
+            if (!IsSpawnable(&typeClass))
+            {
+                continue;
+            }
+
+            s_allowedVesselTypes[fillIndex] = index;
+            fillIndex++;
+        }
+
+        while (fillIndex < VESSEL_COUNT)
+        {
+            s_allowedVesselTypes[fillIndex++] = VESSEL_NONE;
+        }
+    }
+
+    int index = GetIndexFromKeyData(hkdData, s_lastSpawnVesselType, s_allowedVesselTypes, VESSEL_COUNT);
+
+    s_spawnVesselType = (1 <= index) && (index <= VESSEL_COUNT) && (s_allowedVesselTypes[index - 1] != VESSEL_NONE) ?
+        (VesselType)s_allowedVesselTypes[index - 1] :
+        VESSEL_COUNT;
+
+    return s_spawnVesselType;
 }
 
 HousesType ModState::SetCaptureHouseFromKeyData(HookKeyData& hkdData)
@@ -760,10 +807,7 @@ const ModMessage* ModState::GetNextModMessage(void)
 
 bool ModState::IsSpawnable(const TechnoTypeClass* type)
 {
-    return (type->Level <= MaxUnitLevel) &&
-           (type->Scenario <= MaxUnitScenario) &&
-           ((type->Pre != STRUCTF_NONE) || !(type->IsInsignificant)) &&
-           (type->IsSelectable);
+    return (type->TechnoTypeClass::Full_Name() != 0) && (type->IsSelectable);
 }
 
 int ModState::GetIndexFromKeyData(HookKeyData& hkdData, int iLastType, int* piMappings, int iNumMappings)
