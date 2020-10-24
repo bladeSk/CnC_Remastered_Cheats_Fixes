@@ -1,8 +1,8 @@
 #include "function.h"
 
 #ifdef MOD_BETA
-static const DWORD ModVersion = 0x00010000;
-static const DWORD ForceConfigResetMaxVersion = 0x00000000;
+static const DWORD ModVersion = 0x00030000;
+static const DWORD ForceConfigResetMaxVersion = 0x00020000;
 
 static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2266059423";
 static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod-(BETA)";
@@ -259,6 +259,7 @@ void ModState::Initialize(void)
     s_settings.Add(s_keySpawnInfantry);
     s_settings.Add(s_keySpawnVehicle);
     s_settings.Add(s_keySpawnAircraft);
+    s_settings.Add(s_keySpawnVessel);
     s_settings.Add(s_keyCapture);
     s_settings.Add(s_keyResetToDefault);
 
@@ -572,6 +573,19 @@ UnitType ModState::SetSpawnUnitFromKeyData(HookKeyData& hkdData)
         int fillIndex = 0;
 
         for (UnitType index = UNIT_FIRST; index < UNIT_COUNT; index++)
+        {
+            UnitTypeClass const & typeClass = UnitTypeClass::As_Reference(index);
+
+            if (((UNIT_ANT1 <= index) && (index <= UNIT_ANT3)) || !IsSpawnable(&typeClass))
+            {
+                continue;
+            }
+
+            s_allowedUnitTypes[fillIndex] = index;
+            fillIndex++;
+        }
+
+        for (UnitType index = UNIT_ANT1; index <= UNIT_ANT3; index++)
         {
             UnitTypeClass const & typeClass = UnitTypeClass::As_Reference(index);
 
