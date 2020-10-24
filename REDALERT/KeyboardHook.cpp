@@ -231,13 +231,13 @@ DWORD WINAPI KeyboardHook::HookMessageThread(LPVOID lpParameter)
 
             case WM_USER + 12:
                 ModState::IncreaseResourceGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetResourceGrowthMultiplier());
+                sprintf_s(buffer, "Resource growth multiplier: %d", ModState::GetResourceGrowthMultiplier());
                 ModState::AddModMessage(buffer);
                 break;
 
             case WM_USER + 13:
                 ModState::DecreaseResourceGrowthMultiplier();
-                sprintf_s(buffer, "Tiberium growth multiplier: %d", ModState::GetResourceGrowthMultiplier());
+                sprintf_s(buffer, "Resource growth multiplier: %d", ModState::GetResourceGrowthMultiplier());
                 ModState::AddModMessage(buffer);
                 break;
 

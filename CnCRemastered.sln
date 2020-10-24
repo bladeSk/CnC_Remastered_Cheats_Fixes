@@ -5,9 +5,14 @@ VisualStudioVersion = 15.0.28307.1022
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TiberianDawn", "TiberianDawn\TiberianDawn.vcxproj", "{1380ED08-82A3-49C2-A171-1915574B3382}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedAlert", "RedAlert\RedAlert.vcxproj", "{DA948ED9-EF67-4813-94B7-995BE956786E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedAlert", "REDALERT\RedAlert.vcxproj", "{DA948ED9-EF67-4813-94B7-995BE956786E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyboardHook", "KeyboardHook\KeyboardHook.vcxproj", "{D1F69335-E67C-4872-9E89-90C859CEBDE9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8600DC7D-E644-4393-B4C9-FD8DE9259958}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

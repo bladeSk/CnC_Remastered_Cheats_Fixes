@@ -1030,12 +1030,14 @@ void MapClass::Logic(void)
 	/*
 	** Use the Tiberium setting as a multiplier on growth rate. ST - 7/1/2020 3:05PM
 	*/
+	int tries = ModState::GetResourceGrowthMultiplier();
 	if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
 		if (Session.Options.Tiberium > 1) {
 			subcount *= Session.Options.Tiberium;
 		}
 	}		 
 
+	subcount *= tries;
 	subcount = max(subcount, 1);
 	int index;
 	for (index = TiberiumScan; index < MAP_CELL_TOTAL; index++) {
@@ -1091,20 +1093,17 @@ void MapClass::Logic(void)
 	**	and spread action.
 	*/
 	if (TiberiumScan >= MAP_CELL_TOTAL) {
-        int tries = ModState::GetResourceGrowthMultiplier();
 		TiberiumScan = 0;
 
 		/*
 		**	Growth logic.
 		*/
 		if (TiberiumGrowthCount) {
-            for (int t = 0; t < tries; t++) {
-                for (int i = 0; i < TiberiumGrowthCount; i++) {
-                    CELL cell = TiberiumGrowth[i];
-                    CellClass * newcell = &(*this)[cell];
-                    newcell->Grow_Tiberium();
-                }
-            }
+			for (int i = 0; i < TiberiumGrowthCount; i++) {
+				CELL cell = TiberiumGrowth[i];
+				CellClass * newcell = &(*this)[cell];
+				newcell->Grow_Tiberium();
+			}
 		}
 		TiberiumGrowthCount = 0;
 		TiberiumGrowthExcess = 0;
@@ -1967,7 +1966,7 @@ bool MapClass::Destroy_Bridge_At(CELL cell)
 						ttype++;
 						Add_Cell_Update(cell_updates, update_count, ttype, cell);
 						break;
-		 		}
+				}
 
 				/*
 				** If we were a middle piece that just got blown up, update the
