@@ -4,7 +4,7 @@
 static const DWORD ModVersion = 0x00010000;
 static const DWORD ForceConfigResetMaxVersion = 0x00000000;
 
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\0000000000";
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2266059423";
 static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod-(BETA)";
 
 static const char* StartupMessage = "Red Alert Cheat Mod (BETA) started.\n";
@@ -12,7 +12,7 @@ static const char* StartupMessage = "Red Alert Cheat Mod (BETA) started.\n";
 static const DWORD ModVersion = 0x01000000;
 static const DWORD ForceConfigResetMaxVersion = 0x01000000;
 
-static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\0000000000";
+static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2266059383";
 static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod";
 
 static const char* StartupMessage = "Red Alert Cheat Mod started.\n";
