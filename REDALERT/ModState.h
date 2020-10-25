@@ -154,6 +154,16 @@ public:
         return *s_isUnlockBuildOptions;
     }
 
+    static inline bool IsUnlockBuildOptionsEnabled(const HouseClass* house)
+    {
+        if ((house == PlayerPtr) || house->IsPlayerControl)
+        {
+            return *s_isUnlockBuildOptions;
+        }
+
+        return false;
+    }
+
     static inline bool NeedUpdateUnlockBuildOptions(void)
     {
         if (*s_needUnlockBuildOptions)
