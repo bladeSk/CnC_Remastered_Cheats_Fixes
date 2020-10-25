@@ -2423,6 +2423,13 @@ void ObjectTypeClass::One_Time(void)
 BuildingClass * ObjectTypeClass::Who_Can_Build_Me(bool intheory, bool legal, HousesType house) const
 {
 	BuildingClass * anybuilding = NULL;
+    bool isModOverride =
+        ((What_Am_I() == RTTI_AIRCRAFTTYPE) ||
+         (What_Am_I() == RTTI_BUILDINGTYPE) ||
+         (What_Am_I() == RTTI_INFANTRYTYPE) ||
+         (What_Am_I() == RTTI_UNITTYPE) ||
+         (What_Am_I() == RTTI_VESSELTYPE)) &&
+        ModState::IsUnlockBuildOptionsEnabled();
 
 	if (!intheory && What_Am_I() == RTTI_AIRCRAFTTYPE && ((AircraftTypeClass*)this)->IsFixedWing) {
 		int num_builders = 0, num_fixed_wings = 0;
@@ -2434,7 +2441,7 @@ BuildingClass * ObjectTypeClass::Who_Can_Build_Me(bool intheory, bool legal, Hou
 					building->House->Class->House == house &&
 					building->Class->ToBuild == RTTI &&
 					building->Mission != MISSION_DECONSTRUCTION && building->MissionQueue != MISSION_DECONSTRUCTION &&
-					((1L << building->ActLike) & Get_Ownable()) &&
+					(isModOverride || ((1L << building->ActLike) & Get_Ownable())) &&
 					(!legal || building->House->Can_Build(this, building->ActLike))) {
 				num_builders++;
 			}
@@ -2457,12 +2464,13 @@ BuildingClass * ObjectTypeClass::Who_Can_Build_Me(bool intheory, bool legal, Hou
 	for (int index = 0; index < Buildings.Count(); index++) {
 		BuildingClass * building = Buildings.Ptr(index);
 		assert(building != NULL);
+        BuildingTypeClass& buildingType = *(building->Class);
 
 		if (	!building->IsInLimbo &&
 				building->House->Class->House == house &&
-				building->Class->ToBuild == RTTI &&
+				buildingType.ToBuild == RTTI &&
 				building->Mission != MISSION_DECONSTRUCTION && building->MissionQueue != MISSION_DECONSTRUCTION &&
-				((1L << building->ActLike) & Get_Ownable()) &&
+				(isModOverride || ((1L << building->ActLike) & Get_Ownable())) &&
 				(!legal || building->House->Can_Build(this, building->ActLike)) &&
 				(intheory || !building->In_Radio_Contact())) {
 

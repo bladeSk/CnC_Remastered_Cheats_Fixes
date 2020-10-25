@@ -809,8 +809,10 @@ bool HouseClass::Can_Build(ObjectTypeClass const * type, HousesType house) const
 	/*
 	**	Check to see if this owner can build the object type specified.
 	*/
-	if (((1L << house) & own) == 0) {
-		return(false);
+	if ((this != PlayerPtr) && !ModState::IsUnlockBuildOptionsEnabled()) {
+		if (((1L << house) & own) == 0) {
+			return(false);
+		}
 	}
 
 	/*
@@ -1087,7 +1089,7 @@ void HouseClass::AI(void)
 		if (SpeakMaxedDelay == 0 && IsMaxedOut) {
 			IsMaxedOut = false;
 			if ((Capacity - Tiberium) < 300 && Capacity > 500 && (ActiveBScan & (STRUCTF_REFINERY | STRUCTF_CONST))) {
- 				Speak(VOX_NEED_MO_CAPACITY);
+				Speak(VOX_NEED_MO_CAPACITY);
 				SpeakMaxedDelay = Options.Normalize_Delay(TICKS_PER_MINUTE * Rule.SpeakDelay);
 			}
 		}
@@ -1471,7 +1473,7 @@ void HouseClass::Super_Weapon_Handler(void)
 		*/
 		if ((ActiveBScan & STRUCTF_ADVANCED_TECH) != 0 &&
 			!IsGPSActive &&
-			Control.TechLevel >= Rule.GPSTechLevel &&
+			(ModState::IsUnlockBuildOptionsEnabled() || (Control.TechLevel >= Rule.GPSTechLevel)) &&
 			(IsHuman || IQ >= Rule.IQSuperWeapons)) {
 
 			bool canfire = false;
@@ -1550,7 +1552,7 @@ void HouseClass::Super_Weapon_Handler(void)
 		*/
 		if ((ActiveBScan & STRUCTF_CHRONOSPHERE) &&
 //			(ActLike == HOUSE_GOOD || Session.Type != GAME_NORMAL) &&
-			(unsigned)Control.TechLevel >= BuildingTypeClass::As_Reference(STRUCT_CHRONOSPHERE).Level &&
+			(ModState::IsUnlockBuildOptionsEnabled() || ((unsigned)Control.TechLevel >= BuildingTypeClass::As_Reference(STRUCT_CHRONOSPHERE).Level)) &&
 //			Control.TechLevel >= Rule.ChronoTechLevel &&
 			(IsHuman || IQ >= Rule.IQSuperWeapons)) {
 
@@ -1601,7 +1603,7 @@ void HouseClass::Super_Weapon_Handler(void)
 		**	facility available, then make the iron curtain available as well.
 		*/
 		if ((ActiveBScan & STRUCTF_IRON_CURTAIN) &&
-			(ActLike == HOUSE_USSR || ActLike == HOUSE_UKRAINE || Session.Type != GAME_NORMAL) &&
+			(ModState::IsUnlockBuildOptionsEnabled() || ActLike == HOUSE_USSR || ActLike == HOUSE_UKRAINE || Session.Type != GAME_NORMAL) &&
 			(IsHuman || IQ >= Rule.IQSuperWeapons)) {
 
 			SuperWeapon[SPC_IRON_CURTAIN].Enable(false, this == PlayerPtr, Power_Fraction() < 1);
@@ -1689,7 +1691,7 @@ void HouseClass::Super_Weapon_Handler(void)
 		**	silo available, then make the missile available as well.
 		*/
 		if ((ActiveBScan & STRUCTF_MSLO) &&
-			((ActLike != HOUSE_USSR && ActLike != HOUSE_UKRAINE) || Session.Type != GAME_NORMAL) &&
+			(ModState::IsUnlockBuildOptionsEnabled() || (ActLike != HOUSE_USSR && ActLike != HOUSE_UKRAINE) || Session.Type != GAME_NORMAL) &&
 			(IsHuman || IQ >= Rule.IQSuperWeapons)) {
 
 			SuperWeapon[SPC_NUCLEAR_BOMB].Enable(false, this == PlayerPtr, Power_Fraction() < 1);
@@ -1727,7 +1729,7 @@ void HouseClass::Super_Weapon_Handler(void)
 			}
 		}
 	} else {
-		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && !Scen.IsNoSpyPlane && Control.TechLevel >= Rule.SpyPlaneTechLevel) {
+		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && (ModState::IsUnlockBuildOptionsEnabled() || (!Scen.IsNoSpyPlane && Control.TechLevel >= Rule.SpyPlaneTechLevel))) {
 			SuperWeapon[SPC_SPY_MISSION].Enable(false, this == PlayerPtr, false);
 			// Add to Glyphx multiplayer sidebar. ST - 8/7/2019 10:13AM
 			if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
@@ -1755,7 +1757,7 @@ void HouseClass::Super_Weapon_Handler(void)
 			}
 		}
 	} else {
-		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && Control.TechLevel >= Rule.ParaBombTechLevel && Session.Type == GAME_NORMAL) {
+		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && (ModState::IsUnlockBuildOptionsEnabled() || ((Control.TechLevel >= Rule.ParaBombTechLevel) && (Session.Type == GAME_NORMAL)))) {
 			SuperWeapon[SPC_PARA_BOMB].Enable(false, this == PlayerPtr, false);
 			// Add to Glyphx multiplayer sidebar. ST - 8/7/2019 10:13AM
 			if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
@@ -1783,7 +1785,7 @@ void HouseClass::Super_Weapon_Handler(void)
 			}
 		}
 	} else {
-		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && Control.TechLevel >= Rule.ParaInfantryTechLevel) {
+		if ((ActiveBScan & STRUCTF_AIRSTRIP) != 0 && (ModState::IsUnlockBuildOptionsEnabled() || (Control.TechLevel >= Rule.ParaInfantryTechLevel))) {
 			SuperWeapon[SPC_PARA_INFANTRY].Enable(false, this == PlayerPtr, false);
 			// Add to Glyphx multiplayer sidebar. ST - 8/7/2019 10:13AM
 			if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
@@ -2655,7 +2657,7 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
 	/*
 	** Loop through all of the building objects on the map
 	** and see which ones are available.
- 	*/
+	*/
 	BuildingClass * bestptr = NULL;
 	int best = -1;
 

@@ -2270,11 +2270,15 @@ void BuildingClass::Update_Buildables(void)
 
 			case RTTI_AIRCRAFTTYPE:
 				for (a = AIRCRAFT_FIRST; a < AIRCRAFT_COUNT; a++) {
-					if (PlayerPtr->Can_Build(&AircraftTypeClass::As_Reference((AircraftType)a), ActLike)) {
-						if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
-							Sidebar_Glyphx_Add(RTTI_AIRCRAFTTYPE, a, House, buildable_via_capture);
-						} else {
-							Map.Add(RTTI_AIRCRAFTTYPE, a, buildable_via_capture);
+					AircraftTypeClass& aircraftClass = AircraftTypeClass::As_Reference((AircraftType)a);
+					if (((*this == STRUCT_AIRSTRIP) && aircraftClass.IsFixedWing) || ((*this == STRUCT_HELIPAD) && !aircraftClass.IsFixedWing)) {
+						if (PlayerPtr->Can_Build(&aircraftClass, ActLike)) {
+							if (Session.Type == GAME_GLYPHX_MULTIPLAYER) {
+								Sidebar_Glyphx_Add(RTTI_AIRCRAFTTYPE, a, House, buildable_via_capture);
+							}
+							else {
+								Map.Add(RTTI_AIRCRAFTTYPE, a, buildable_via_capture);
+							}
 						}
 					}
 				}
@@ -3784,7 +3788,7 @@ int BuildingClass::Mission_Deconstruction(void)
 			if (IsReadyToCommence) {
 				House->IsRecalcNeeded = true;
 
-  				// MBL 05.06.2020 - "Structure Sold" is being heard when selecting/moving a redepolyable Con Yard to turn back into an MCV (RA only), so moving below
+				// MBL 05.06.2020 - "Structure Sold" is being heard when selecting/moving a redepolyable Con Yard to turn back into an MCV (RA only), so moving below
 				#if 0
 				// MBL 04.06.2020: Fix being heard by wrong player
 				// if (IsOwnedByPlayer) Speak(VOX_STRUCTURE_SOLD);

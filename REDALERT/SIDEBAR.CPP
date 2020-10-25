@@ -1408,7 +1408,7 @@ void SidebarClass::StripClass::Deactivate(void)
  *=============================================================================================*/
 bool SidebarClass::StripClass::Add(RTTIType type, int id, bool via_capture)
 {
-	if (BuildableCount <= MAX_BUILDABLES) {
+	if (BuildableCount < MAX_BUILDABLES) {
         if (ModState::IsUnlockBuildOptionsEnabled())
         {
             const TechnoTypeClass* typeClass = Fetch_Techno_Type(type, id);
