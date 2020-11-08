@@ -4516,7 +4516,7 @@ int BuildingClass::Mission_Missile(void)
 						** at tech level 10 or below, because you can't build the nuclear silo until
 						** tech level 15 or so.
 						*/
-						if (House->Control.TechLevel <= 10) {
+						if (!ModState::IsUnlockBuildOptionsEnabled(House) && (House->Control.TechLevel <= 10)) {
 							return(6);
 						}
 						bullet = new BulletClass(BULLET_NUKE_DOWN, ::As_Target(House->NukeDest), this, 200, WARHEAD_NUKE, MPH_VERY_FAST);

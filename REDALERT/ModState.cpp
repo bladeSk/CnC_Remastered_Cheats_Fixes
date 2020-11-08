@@ -1,7 +1,7 @@
 #include "function.h"
 
 #ifdef MOD_BETA
-static const DWORD ModVersion = 0x00060000;
+static const DWORD ModVersion = 0x00070000;
 static const DWORD ForceConfigResetMaxVersion = 0x00050000;
 
 static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2266059423";
