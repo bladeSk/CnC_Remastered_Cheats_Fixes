@@ -201,6 +201,46 @@ public:
         return (Debug_Unshroud || *s_isDismissShroud);
     }
 
+    static inline bool IsMapped(const HouseClass* house, const CellClass* cell)
+    {
+        if (house && house->IsPlayerControl && CanDismissShroud())
+        {
+            return true;
+        }
+
+        return cell->IsMapped;
+    }
+
+    static inline bool IsMapped(const HouseClass* house, const CellClass& cell)
+    {
+        if (house && house->IsPlayerControl && CanDismissShroud())
+        {
+            return true;
+        }
+
+        return cell.IsMapped;
+    }
+
+    static inline bool IsVisible(const HouseClass* house, const CellClass* cell)
+    {
+        if (house && house->IsPlayerControl && CanDismissShroud())
+        {
+            return true;
+        }
+
+        return cell->IsVisible;
+    }
+
+    static inline bool IsVisible(const HouseClass* house, const CellClass& cell)
+    {
+        if (house && house->IsPlayerControl && CanDismissShroud())
+        {
+            return true;
+        }
+
+        return cell.IsVisible;
+    }
+
     static bool ToggleUnlimitedAmmo(void);
 
     static inline bool IsUnlimitedAmmoEnabled(void)

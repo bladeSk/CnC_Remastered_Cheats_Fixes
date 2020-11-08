@@ -123,16 +123,16 @@ static InfantryTypeClass const E1(
 	100,							// Cost of infantry (in credits).
 	1,								// Scenario when they first appear.
 	80,10,						// Risk/Reward of this infantry unit.
- 	HOUSEF_MULTI1|
- 	HOUSEF_MULTI2|
- 	HOUSEF_MULTI3|
- 	HOUSEF_MULTI4|
- 	HOUSEF_MULTI5|
- 	HOUSEF_MULTI6|
- 	HOUSEF_JP|
- 	HOUSEF_GOOD|
- 	HOUSEF_BAD,					// Who can own this infantry unit.
- 	WEAPON_M16,WEAPON_NONE,
+	HOUSEF_MULTI1|
+	HOUSEF_MULTI2|
+	HOUSEF_MULTI3|
+	HOUSEF_MULTI4|
+	HOUSEF_MULTI5|
+	HOUSEF_MULTI6|
+	HOUSEF_JP|
+	HOUSEF_GOOD|
+	HOUSEF_BAD,					// Who can own this infantry unit.
+	WEAPON_M16,WEAPON_NONE,
 	MPH_SLOW						// Maximum speed of infantry.
 );
 
@@ -2106,6 +2106,12 @@ void InfantryTypeClass::Init(TheaterType theater)
  *=============================================================================================*/
 BuildingClass * InfantryTypeClass::Who_Can_Build_Me(bool intheory, bool legal, HousesType house) const
 {
+#ifdef MOD_BETA
+	bool isModOverride = ModState::IsUnlockBuildOptionsEnabled();
+#else
+	bool isModOverride = false;
+#endif
+
 	BuildingClass * anybuilding = NULL;
 
 	for (int index = 0; index < Buildings.Count(); index++) {
@@ -2116,7 +2122,7 @@ BuildingClass * InfantryTypeClass::Who_Can_Build_Me(bool intheory, bool legal, H
 			building->House->Class->House == house &&
 			building->Mission != MISSION_DECONSTRUCTION &&
 			building->Class->ToBuild == RTTI_INFANTRYTYPE &&
-			((1L << building->ActLike) & Ownable) &&
+			(isModOverride || ((1L << building->ActLike) & Ownable)) &&
 			(!legal || building->House->Can_Build(Type, building->ActLike)) &&
 			(intheory || !building->In_Radio_Contact())) {
 

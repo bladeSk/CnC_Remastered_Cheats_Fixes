@@ -215,7 +215,7 @@ bool AnimClass::Render(bool forced) const
 	assert(IsActive);
 
 	if (Delay) return(false);
-	if (Map[Center_Coord()].IsVisible) {
+	if (Map[Center_Coord()].IsVisible || ModState::CanDismissShroud()) {
 		const_cast<AnimClass*>(this)->IsToDisplay = true;	// const_cast. ST - 5/8/2019
 	}
 #endif

@@ -1830,6 +1830,12 @@ ObjectClass * UnitTypeClass::Create_One_Of(HouseClass * house) const
  *=============================================================================================*/
 BuildingClass * UnitTypeClass::Who_Can_Build_Me(bool intheory, bool legal, HousesType house) const
 {
+#ifdef MOD_BETA
+	bool isModOverride = ModState::IsUnlockBuildOptionsEnabled();
+#else
+	bool isModOverride = false;
+#endif
+
 	BuildingClass * anybuilding = NULL;
 
 	for (int index = 0; index < Buildings.Count(); index++) {
@@ -1840,7 +1846,7 @@ BuildingClass * UnitTypeClass::Who_Can_Build_Me(bool intheory, bool legal, House
 				building->House->Class->House == house &&
 				building->Class->ToBuild == RTTI_UNITTYPE &&
 				building->Mission != MISSION_DECONSTRUCTION &&
-				((1L << building->ActLike) & Ownable) &&
+				(isModOverride || ((1L << building->ActLike) & Ownable)) &&
 				(!legal || building->House->Can_Build(Type, building->ActLike)) &&
 				(intheory || !building->In_Radio_Contact())) {
 

@@ -127,9 +127,6 @@ typedef int bool;
 //#define WIN32 =1	//_LEAN_AND_MEAN
 #include <windows.h>
 
-// Enable to turn on beta mode for the mod.
-//#define MOD_BETA
-
 /**********************************************************************
 **	If the following define is enabled, then the memory checking code
 **	will be disabled.

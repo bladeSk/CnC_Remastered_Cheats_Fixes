@@ -133,9 +133,6 @@ UnitTypeClass      ³   BuildingTypeClass      ³  VesselTypeClass
 
 #endif
 
-// Enable to turn on beta mode for the mod.
-#define MOD_BETA
-
 
 /*
 **	The "bool" integral type was defined by the C++ comittee in

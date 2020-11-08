@@ -3083,7 +3083,7 @@ MoveType AircraftClass::Can_Enter_Cell(CELL cell, FacingType ) const
 		if (!cellptr->Is_Clear_To_Move(SPEED_TRACK, false, false)) return(MOVE_NO);
 	}
 
-	if (Session.Type == GAME_NORMAL && IsOwnedByPlayer && !cellptr->IsMapped) {
+	if (Session.Type == GAME_NORMAL && IsOwnedByPlayer && !ModState::IsMapped(House, cellptr)) {
 		return(MOVE_NO);
 	}
 

@@ -611,6 +611,12 @@ short const * AircraftTypeClass::Overlap_List(void) const
  *=============================================================================================*/
 BuildingClass * AircraftTypeClass::Who_Can_Build_Me(bool , bool legal, HousesType house) const
 {
+#ifdef MOD_BETA
+	bool isModOverride = ModState::IsUnlockBuildOptionsEnabled();
+#else
+	bool isModOverride = false;
+#endif
+	
 	BuildingClass * anybuilding = NULL;
 	for (int index = 0; index < Buildings.Count(); index++) {
 		BuildingClass * building = Buildings.Ptr(index);
@@ -619,7 +625,7 @@ BuildingClass * AircraftTypeClass::Who_Can_Build_Me(bool , bool legal, HousesTyp
 				!building->IsInLimbo &&
 				building->House->Class->House == house &&
 				building->Mission != MISSION_DECONSTRUCTION &&
-				((1L << building->ActLike) & Ownable) &&
+				(isModOverride || ((1L << building->ActLike) & Ownable)) &&
 				(!legal || building->House->Can_Build(Type, building->ActLike)) &&
 				building->Class->ToBuild == RTTI_AIRCRAFTTYPE) {
 

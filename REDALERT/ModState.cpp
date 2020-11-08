@@ -1,8 +1,8 @@
 #include "function.h"
 
 #ifdef MOD_BETA
-static const DWORD ModVersion = 0x00050000;
-static const DWORD ForceConfigResetMaxVersion = 0x00020000;
+static const DWORD ModVersion = 0x00060000;
+static const DWORD ForceConfigResetMaxVersion = 0x00050000;
 
 static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2266059423";
 static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Red-Alert-Cheat-Mod-(BETA)";
@@ -240,6 +240,9 @@ void ModState::Initialize(void)
 
     s_settings.Add(s_resourceGrowthMultiplier);
 
+    s_settings.Add(s_initialCreditBoost);
+    s_settings.Add(s_initialPowerBoost);
+
     s_settings.Add(s_keyHelpKeySetting);
     s_settings.Add(s_keyToggleNoDamage);
     s_settings.Add(s_keyToggleUnlockBuildOptions);
@@ -443,7 +446,7 @@ bool ModState::TriggerNeedShowHelp(void)
 
                 if (key.dwEndKey != 0)
                 {
-                    strncat_s(pMessage, MaxModMessageLength, ", ", _TRUNCATE);
+                    strncat_s(pMessage, MaxModMessageLength, ", <opt-key | ", _TRUNCATE);
 
                     dwBaseKey = key.dwEndKey & 0xFF;
                     uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
@@ -472,7 +475,6 @@ bool ModState::TriggerNeedShowHelp(void)
                         strncat_s(pMessage, MaxModMessageLength, "+", _TRUNCATE);
                     }
 
-                    strncat_s(pMessage, MaxModMessageLength, ", <opt-key | ", _TRUNCATE);
                     strncat_s(pMessage, MaxModMessageLength, endKeyName, _TRUNCATE);
                     strncat_s(pMessage, MaxModMessageLength, ">", _TRUNCATE);
                 }
@@ -916,6 +918,10 @@ void ModState::LoadSettings(void)
         if (*s_lastLoadedVersion <= ForceConfigResetMaxVersion)
         {
             AddModMessage("Previous mod version configuration is incompatible with current version");
+
+            sprintf_s(buffer, "See wiki for more information: %s", WikiUri);
+            AddModMessage(buffer);
+
             isBadConfigVersion = true;
         }
         else
@@ -925,7 +931,12 @@ void ModState::LoadSettings(void)
                 if (*s_lastLoadedVersion == KnownBadConfigVersions[index])
                 {
                     AddModMessage("Previous mod version has known bad configuration");
+
+                    sprintf_s(buffer, "See wiki for more information: %s", WikiUri);
+                    AddModMessage(buffer);
+
                     isBadConfigVersion = true;
+                    break;
                 }
             }
         }

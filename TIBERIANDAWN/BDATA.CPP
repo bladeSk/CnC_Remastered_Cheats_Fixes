@@ -4453,6 +4453,11 @@ int BuildingTypeClass::Legal_Placement(CELL pos) const
  *=============================================================================================*/
 BuildingClass * BuildingTypeClass::Who_Can_Build_Me(bool intheory, bool legal, HousesType house) const
 {
+#ifdef MOD_BETA
+	bool isModOverride = ModState::IsUnlockBuildOptionsEnabled();
+#else
+	bool isModOverride = false;
+#endif
 	for (int index = Buildings.Count()-1; index >= 0; index--) {
 		BuildingClass * building = Buildings.Ptr(index);
 
@@ -4460,7 +4465,7 @@ BuildingClass * BuildingTypeClass::Who_Can_Build_Me(bool intheory, bool legal, H
 				building->House->Class->House == house &&
 				building->Class->ToBuild == RTTI_BUILDINGTYPE &&
 				building->Mission != MISSION_DECONSTRUCTION &&
-				((1L << building->ActLike) & Ownable) &&
+				(isModOverride || ((1L << building->ActLike) & Ownable)) &&
 				(!legal || building->House->Can_Build(Type, building->ActLike)) &&
 				(intheory || !building->In_Radio_Contact())) {
 			return(building);

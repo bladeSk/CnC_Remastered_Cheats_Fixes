@@ -3415,7 +3415,7 @@ MoveType BuildingClass::Can_Enter_Cell(CELL cell, FacingType) const
 		return(Map[cell].Is_Clear_To_Build(Class->Speed) ? MOVE_OK : MOVE_NO);
 	}
 
-	if (!Debug_Map && ScenarioInit == 0 && Session.Type == GAME_NORMAL && House->IsPlayerControl && !Map[cell].IsMapped) {
+	if (!Debug_Map && ScenarioInit == 0 && Session.Type == GAME_NORMAL && House->IsPlayerControl && !ModState::IsMapped(House, Map[cell])) {
 		return(MOVE_NO);
 	}
 

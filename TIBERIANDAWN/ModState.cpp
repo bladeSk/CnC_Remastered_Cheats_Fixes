@@ -1,7 +1,7 @@
 #include "function.h"
 
 #ifdef MOD_BETA
-static const DWORD ModVersion = 0x02110000;
+static const DWORD ModVersion = 0x04000000;
 static const DWORD ForceConfigResetMaxVersion = 0x02070000;
 
 static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2254499142";
@@ -9,8 +9,8 @@ static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collect
 
 static const char* StartupMessage = "Tiberian Dawn Cheat Mod (BETA) started.\n";
 #else
-static const DWORD ModVersion = 0x03040000;
-static const DWORD ForceConfigResetMaxVersion = 0x03000000;
+static const DWORD ModVersion = 0x03060000;
+static const DWORD ForceConfigResetMaxVersion = 0x03050000;
 
 static const char* SettingsRegPath = "SOFTWARE\\Electronic Arts\\Command & Conquer Remastered Collection\\Mod\\2236325862";
 static const char* WikiUri = "https://github.com/Revenent/CnC_Remastered_Collection/wiki/Tiberian-Dawn-Cheat-Mod";
@@ -21,6 +21,7 @@ static const char* StartupMessage = "Tiberian Dawn Cheat Mod started.\n";
 static const DWORD KnownBadConfigVersions[] = {
     // Null version
     0x00000000,
+    0x02110000,
 };
 
 constexpr auto MaxUnitLevel = 99;
@@ -232,6 +233,9 @@ void ModState::Initialize(void)
 
     s_settings.Add(s_tiberiumGrowthMultiplier);
 
+    s_settings.Add(s_initialCreditBoost);
+    s_settings.Add(s_initialPowerBoost);
+
     s_settings.Add(s_keyHelpKeySetting);
     s_settings.Add(s_keyToggleNoDamage);
     s_settings.Add(s_keyToggleUnlockBuildOptions);
@@ -434,7 +438,7 @@ bool ModState::TriggerNeedShowHelp(void)
 
                 if (key.dwEndKey != 0)
                 {
-                    strncat_s(pMessage, MaxModMessageLength, ", ", _TRUNCATE);
+                    strncat_s(pMessage, MaxModMessageLength, ", <opt-key | ", _TRUNCATE);
 
                     dwBaseKey = key.dwEndKey & 0xFF;
                     uiScanCode = MapVirtualKey(dwBaseKey, MAPVK_VK_TO_VSC);
@@ -459,11 +463,10 @@ bool ModState::TriggerNeedShowHelp(void)
 
                     if (isShift)
                     {
-                        strncat_s(pMessage, MaxModMessageLength, s_modifierKeyNames[0], _TRUNCATE);
+                        strncat_s(pMessage, MaxModMessageLength, s_modifierKeyNames[2], _TRUNCATE);
                         strncat_s(pMessage, MaxModMessageLength, "+", _TRUNCATE);
                     }
 
-                    strncat_s(pMessage, MaxModMessageLength, ", <opt-key | ", _TRUNCATE);
                     strncat_s(pMessage, MaxModMessageLength, endKeyName, _TRUNCATE);
                     strncat_s(pMessage, MaxModMessageLength, ">", _TRUNCATE);
                 }
@@ -858,6 +861,10 @@ void ModState::LoadSettings(void)
         if (*s_lastLoadedVersion <= ForceConfigResetMaxVersion)
         {
             AddModMessage("Previous mod version configuration is incompatible with current version");
+
+            sprintf_s(buffer, "See wiki for more information: %s", WikiUri);
+            AddModMessage(buffer);
+
             isBadConfigVersion = true;
         }
         else
@@ -867,7 +874,12 @@ void ModState::LoadSettings(void)
                 if (*s_lastLoadedVersion == KnownBadConfigVersions[index])
                 {
                     AddModMessage("Previous mod version has known bad configuration");
+
+                    sprintf_s(buffer, "See wiki for more information: %s", WikiUri);
+                    AddModMessage(buffer);
+
                     isBadConfigVersion = true;
+                    break;
                 }
             }
         }

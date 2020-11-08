@@ -553,7 +553,12 @@ HouseClass::~HouseClass (void)
 bool HouseClass::Can_Build(TechnoTypeClass const * type, HousesType house) const
 {
 	Validate();
+#ifdef MOD_BETA
+	if (!type || !type->IsBuildable) return false;
+	if (((this != PlayerPtr) || !ModState::IsUnlockBuildOptionsEnabled()) && (!((1L << house) & type->Ownable))) return false;
+#else
 	if (!type || !type->IsBuildable || !((1L << house) & type->Ownable)) return(false);
+#endif
 
 	/*
 	**	The computer can always build everthing.
@@ -606,124 +611,133 @@ bool HouseClass::Can_Build(TechnoTypeClass const * type, HousesType house) const
 	int level = Scenario;
 #endif
 
-	/*
-	**	Special check to make the mission objective buildings the prerequisite
-	**	for the stealth tank in mission #11 only.
-	*/
-	if (house == HOUSE_BAD &&
-		type->What_Am_I() == RTTI_UNITTYPE &&
-		((UnitTypeClass const *)type)->Type == UNIT_STANK &&
-		level == 11) {
+#ifdef MOD_BETA
+	if ((this != PlayerPtr) || !ModState::IsUnlockBuildOptionsEnabled())
+	{
+#endif
 
-		pre = STRUCTF_MISSION;
-		level = type->Scenario;
+		/*
+		**	Special check to make the mission objective buildings the prerequisite
+		**	for the stealth tank in mission #11 only.
+		*/
+		if (house == HOUSE_BAD &&
+			type->What_Am_I() == RTTI_UNITTYPE &&
+			((UnitTypeClass const *)type)->Type == UNIT_STANK &&
+			level == 11) {
+
+			pre = STRUCTF_MISSION;
+			level = type->Scenario;
+		}
+
+		/*
+		**	Special case check to ensure that GDI doesn't get the bazooka guy
+		**	until mission #8.
+		*/
+		if (house == HOUSE_GOOD &&
+			type->What_Am_I() == RTTI_INFANTRYTYPE &&
+			((InfantryTypeClass const *)type)->Type == INFANTRY_E3 &&
+			level < 7) {
+
+			return(false);
+		}
+
+		/*
+		**	Special check to allow GDI to build the MSAM by mission #9
+		**	and no sooner.
+		*/
+		if (house == HOUSE_GOOD &&
+			type->What_Am_I() == RTTI_UNITTYPE &&
+			((UnitTypeClass const *)type)->Type == UNIT_MLRS &&
+			level < 9) {
+
+			return(false);
+		}
+
+		/*
+		**	Special case to disable the APC from the Nod player.
+		*/
+		if (house == HOUSE_BAD &&
+			type->What_Am_I() == RTTI_UNITTYPE &&
+			((UnitTypeClass const *)type)->Type == UNIT_APC) {
+
+			return(false);
+		}
+
+		/*
+		**	Ensure that the Temple of Nod cannot be built by GDI even
+		**	if GDI has captured the Nod construction yard.
+		*/
+		if (type->What_Am_I() == RTTI_BUILDINGTYPE &&
+			(((BuildingTypeClass const *)type)->Type == STRUCT_TEMPLE || ((BuildingTypeClass const *)type)->Type == STRUCT_OBELISK) &&
+			Class->House == HOUSE_GOOD) {
+
+			return(false);
+		}
+
+		/*
+		**	Ensure that the rocket launcher tank cannot be built by Nod.
+		*/
+		if (type->What_Am_I() == RTTI_UNITTYPE &&
+			((UnitTypeClass const *)type)->Type == UNIT_MLRS &&
+			Class->House == HOUSE_BAD) {
+
+			return(false);
+		}
+
+		/*
+		**	Ensure that the ion cannon cannot be built if
+		**	Nod has captured the GDI construction yard.
+		*/
+		if (type->What_Am_I() == RTTI_BUILDINGTYPE &&
+			(((BuildingTypeClass const *)type)->Type == STRUCT_EYE) &&
+			Class->House == HOUSE_BAD) {
+
+			return(false);
+		}
+
+		/*
+		**	Nod can build the advanced power plant at scenario #12.
+		*/
+		if (house == HOUSE_BAD &&
+			level >= 12 &&
+			type->What_Am_I() == RTTI_BUILDINGTYPE &&
+			((BuildingTypeClass const *)type)->Type == STRUCT_ADVANCED_POWER) {
+
+			level = type->Scenario;
+		}
+
+		/*
+		**	Nod cannot build a helipad in the normal game.
+		*/
+		if (house == HOUSE_BAD &&
+			type->What_Am_I() == RTTI_BUILDINGTYPE &&
+			((BuildingTypeClass const *)type)->Type == STRUCT_HELIPAD) {
+
+			return(false);
+		}
+
+		/*
+		**	GDI can build the sandbag wall only from scenario #9 onwards.
+		*/
+		if (house == HOUSE_GOOD &&
+			level < 8 &&
+			type->What_Am_I() == RTTI_BUILDINGTYPE &&
+			((BuildingTypeClass const *)type)->Type == STRUCT_SANDBAG_WALL) {
+
+			return(false);
+		}
+
+		/*
+		**	GDI has a special second training mission. Adjust the scenario level so that
+		**	scenario two will still feel like scenario #1.
+		*/
+		if (house == HOUSE_GOOD && level == 2) {
+			level = 1;
+		}
+
+#ifdef MOD_BETA
 	}
-
-	/*
-	**	Special case check to ensure that GDI doesn't get the bazooka guy
-	**	until mission #8.
-	*/
-	if (house == HOUSE_GOOD &&
-		type->What_Am_I() == RTTI_INFANTRYTYPE &&
-		((InfantryTypeClass const *)type)->Type == INFANTRY_E3 &&
-		level < 7) {
-
-		return(false);
-	}
-
-	/*
-	**	Special check to allow GDI to build the MSAM by mission #9
-	**	and no sooner.
-	*/
-	if (house == HOUSE_GOOD &&
-		type->What_Am_I() == RTTI_UNITTYPE &&
-		((UnitTypeClass const *)type)->Type == UNIT_MLRS &&
-		level < 9) {
-
-		return(false);
-	}
-
-	/*
-	**	Special case to disable the APC from the Nod player.
-	*/
-	if (house == HOUSE_BAD &&
-		type->What_Am_I() == RTTI_UNITTYPE &&
-		((UnitTypeClass const *)type)->Type == UNIT_APC) {
-
-		return(false);
-	}
-
-	/*
-	**	Ensure that the Temple of Nod cannot be built by GDI even
-	**	if GDI has captured the Nod construction yard.
-	*/
-	if (type->What_Am_I() == RTTI_BUILDINGTYPE &&
-		(((BuildingTypeClass const *)type)->Type == STRUCT_TEMPLE || ((BuildingTypeClass const *)type)->Type == STRUCT_OBELISK) &&
-		Class->House == HOUSE_GOOD) {
-
-		return(false);
-	}
-
-	/*
-	**	Ensure that the rocket launcher tank cannot be built by Nod.
-	*/
-	if (type->What_Am_I() == RTTI_UNITTYPE &&
-		((UnitTypeClass const *)type)->Type == UNIT_MLRS &&
-		Class->House == HOUSE_BAD) {
-
-		return(false);
-	}
-
-	/*
-	**	Ensure that the ion cannon cannot be built if
-	**	Nod has captured the GDI construction yard.
-	*/
-	if (type->What_Am_I() == RTTI_BUILDINGTYPE &&
-		(((BuildingTypeClass const *)type)->Type == STRUCT_EYE) &&
-		Class->House == HOUSE_BAD) {
-
-		return(false);
-	}
-
-	/*
-	**	Nod can build the advanced power plant at scenario #12.
-	*/
-	if (house == HOUSE_BAD &&
-		level >= 12 &&
-		type->What_Am_I() == RTTI_BUILDINGTYPE &&
-		((BuildingTypeClass const *)type)->Type == STRUCT_ADVANCED_POWER) {
-
-		level = type->Scenario;
-	}
-
-	/*
-	**	Nod cannot build a helipad in the normal game.
-	*/
-	if (house == HOUSE_BAD &&
-		type->What_Am_I() == RTTI_BUILDINGTYPE &&
-		((BuildingTypeClass const *)type)->Type == STRUCT_HELIPAD) {
-
-		return(false);
-	}
-
-	/*
-	**	GDI can build the sandbag wall only from scenario #9 onwards.
-	*/
-	if (house == HOUSE_GOOD &&
-		level < 8 &&
-		type->What_Am_I() == RTTI_BUILDINGTYPE &&
-		((BuildingTypeClass const *)type)->Type == STRUCT_SANDBAG_WALL) {
-
-		return(false);
-	}
-
-	/*
-	**	GDI has a special second training mission. Adjust the scenario level so that
-	**	scenario two will still feel like scenario #1.
-	*/
-	if (house == HOUSE_GOOD && level == 2) {
-		level = 1;
-	}
+#endif
 
 	// ST - 8/23/2019 4:53PM
 	if (DebugUnlockBuildables) {
@@ -1201,7 +1215,7 @@ void HouseClass::AI(void)
 		if (SpeakMaxedDelay.Expired() && IsMaxedOut) {
 			IsMaxedOut = false;
 			if ((Capacity - Tiberium) < 300 && Capacity > 500 && (BScan & (STRUCTF_REFINERY | STRUCTF_CONST))) {
- 				Speak(VOX_NEED_MO_CAPACITY);
+				Speak(VOX_NEED_MO_CAPACITY);
 				SpeakMaxedDelay.Set(Options.Normalize_Delay(SPEAK_DELAY));
 			}
 		}
@@ -1293,7 +1307,7 @@ void HouseClass::AI(void)
 		*/
 		if ((GameToPlay == GAME_NORMAL || Rule.AllowSuperWeapons) &&
 			(ActiveBScan & STRUCTF_EYE) &&
-			(ActLike == HOUSE_GOOD || GameToPlay != GAME_NORMAL) &&
+			(ActLike == HOUSE_GOOD || ModState::IsUnlockBuildOptionsEnabled() || GameToPlay != GAME_NORMAL) &&
 			(IsHuman || GameToPlay != GAME_NORMAL)) {
 
 			IonCannon.Enable(false, this == PlayerPtr, Power_Fraction() < 0x0100);
@@ -1362,7 +1376,12 @@ void HouseClass::AI(void)
 		**	available, then make the nuke strike strike available.
 		*/
 		if ((GameToPlay == GAME_NORMAL || Rule.AllowSuperWeapons) && (ActiveBScan & STRUCTF_TEMPLE) && Has_Nuke_Device() && IsHuman) {
-			NukeStrike.Enable((GameToPlay == GAME_NORMAL), this == PlayerPtr);
+#ifdef MOD_BETA
+			bool isOneTime = (GameToPlay == GAME_NORMAL) && !((this == PlayerPtr) && ModState::IsUnlockBuildOptionsEnabled());
+#else
+			bool isOneTime = (GameToPlay == GAME_NORMAL);
+#endif
+			NukeStrike.Enable(isOneTime, this == PlayerPtr);
 
 			/*
 			**	Flag the sidebar to be redrawn if necessary.
@@ -2621,7 +2640,7 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
 	/*
 	** Loop through all of the building objects on the map
 	** and see which ones are available.
- 	*/
+	*/
 	BuildingClass * bestptr = NULL;
 	int best = -1;
 
@@ -2743,7 +2762,7 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
 					**	Since no launch site was found, just bring the missile in
 					**	directly from the North map edge.
 					*/
-				 	BulletClass *bullet = new BulletClass(BULLET_NUKE_DOWN);
+					BulletClass *bullet = new BulletClass(BULLET_NUKE_DOWN);
 					if (bullet) {
 						COORDINATE start = Cell_Coord(XY_Cell(Cell_X(cell), 0));
 						bullet->Assign_Target(::As_Target(cell));
@@ -3091,7 +3110,7 @@ void HouseClass::Init_Ion_Cannon(SpecialControlType control)
 		IonOldStage = -1;
 		IonOneTimeFlag = one_time_effect;
 	} else {
-	 	if (first_time && IonCannonPresent && !one_time_effect && IonOneTimeFlag) {
+		if (first_time && IonCannonPresent && !one_time_effect && IonOneTimeFlag) {
 			IonOneTimeFlag	= false;
 		}
 	}
@@ -3124,7 +3143,7 @@ void HouseClass::Init_Ion_Cannon(bool first_time, bool one_time_effect)
 		IonOldStage = -1;
 		IonOneTimeFlag = one_time_effect;
 	} else {
-	 	if (first_time && IonCannonPresent && !one_time_effect && IonOneTimeFlag) {
+		if (first_time && IonCannonPresent && !one_time_effect && IonOneTimeFlag) {
 			IonOneTimeFlag	= false;
 		}
 	}
@@ -3341,7 +3360,7 @@ void HouseClass::Init_Air_Strike(bool first_time, bool one_time_effect)
 			Special_Weapon_AI(SPC_AIR_STRIKE);
 		}
 	} else {
-	 	if (first_time && AirPresent && !one_time_effect && AirOneTimeFlag) {
+		if (first_time && AirPresent && !one_time_effect && AirOneTimeFlag) {
 			AirOneTimeFlag	= false;
 		}
 	}
@@ -4264,7 +4283,7 @@ void HouseClass::MPlayer_Defeated(void)
 		- For each house:
 		  - If this house is human & wasn't defeated, its the winner
 		  - If this house was defeated, find out who did it & increment their
-		    Kills value.
+			Kills value.
 		---------------------------------------------------------------------*/
 		for (house = HOUSE_MULTI1; house < (HOUSE_MULTI1 + MPlayerMax); house++) {
 			hptr = HouseClass::As_Pointer(house);

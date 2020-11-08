@@ -630,7 +630,7 @@ void CellClass::Occupy_Down(ObjectClass * object)
 	//	object->Revealed(PlayerPtr);
 	//}
 	if (Session.Type != GAME_GLYPHX_MULTIPLAYER) {
-		if (IsMapped || Session.Type != GAME_NORMAL) {
+		if (IsMapped || ModState::CanDismissShroud() || Session.Type != GAME_NORMAL) {
 			object->Revealed(PlayerPtr);
 		}
 	} else {
@@ -793,7 +793,7 @@ void CellClass::Overlap_Down(ObjectClass * object)
 	**	If being placed down on a visible square, then flag this
 	**	techno object as being revealed to the player.
 	*/
-	if (IsMapped) {
+	if (IsMapped || ModState::CanDismissShroud()) {
 		object->Revealed(PlayerPtr);
 	}
 }
@@ -2934,7 +2934,7 @@ bool CellClass::Is_Clear_To_Move(SpeedType loco, bool ignoreinfantry, bool ignor
 	*/
 	OverlayTypeClass const * overlay = NULL;
 	if (Overlay != OVERLAY_NONE) {
-	 	overlay = &OverlayTypeClass::As_Reference(Overlay);
+		overlay = &OverlayTypeClass::As_Reference(Overlay);
 	}
 	if (overlay != NULL && overlay->IsWall) {
 		if (check != MZONE_DESTROYER && (check != MZONE_CRUSHER || !overlay->IsCrushable)) {
@@ -3229,10 +3229,10 @@ void CellClass::Set_Mapped(HouseClass *player, bool set)
  *=============================================================================================*/
 bool CellClass::Is_Mapped(HousesType house, bool ignoreMod) const
 {
-    if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
-    {
-        return true;
-    }
+	if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
+	{
+		return true;
+	}
 
 	int shift = (int) house;
 	return (IsMappedByPlayerMask & (1 << shift)) ? true : false;
@@ -3248,11 +3248,11 @@ bool CellClass::Is_Mapped(HousesType house, bool ignoreMod) const
 bool CellClass::Is_Mapped(HouseClass *player, bool ignoreMod) const
 {
 	if (player && player->Class)
-    {
-        if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
-        {
-            return true;
-        }
+	{
+		if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
+		{
+			return true;
+		}
 
 		return Is_Mapped(player->Class->House, ignoreMod);
 	}
@@ -3303,10 +3303,10 @@ void CellClass::Set_Visible(HouseClass *player, bool set)
  *=============================================================================================*/
 bool CellClass::Is_Visible(HousesType house, bool ignoreMod) const
 {
-    if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
-    {
-        return true;
-    }
+	if (!ignoreMod && (PlayerPtr->Class->House == house) && ModState::CanDismissShroud())
+	{
+		return true;
+	}
 
 	int shift = (int) house;
 	return (IsVisibleByPlayerMask & (1 << shift)) ? true : false;
@@ -3322,11 +3322,11 @@ bool CellClass::Is_Visible(HousesType house, bool ignoreMod) const
 bool CellClass::Is_Visible(HouseClass *player, bool ignoreMod) const
 {
 	if (player && player->Class)
-    {
-        if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
-        {
-            return true;
-        }
+	{
+		if (!ignoreMod && (PlayerPtr == player) && ModState::CanDismissShroud())
+		{
+			return true;
+		}
 
 		return Is_Visible(player->Class->House, ignoreMod);
 	}

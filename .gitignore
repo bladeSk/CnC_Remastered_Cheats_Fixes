@@ -5,9 +5,8 @@
 /.vs
 /bin/Win32
 /CnCTDRAMapEditor/obj
-/REDALERT/Win32/Release
-/REDALERT/RedAlert.vcxproj.user
-/TIBERIANDAWN/Win32/Release
-/TIBERIANDAWN/TiberianDawn.vcxproj.user
-/KeyboardHook/Win32/Release
-/KeyboardHook/KeyboardHook.vcxproj.user
+**/Win32/Release
+**/Win32/Release-Beta
+**/Win32/Release-Release
+**/Win32/Debug
+**/*.vcxproj.user
