@@ -170,9 +170,10 @@ DWORD WINAPI KeyboardHook::HookMessageThread(LPVOID lpParameter)
                 break;
 
             case WM_USER + 2:
-                mode = ModState::ToggleNoDamage();
-                sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
-                ModState::AddModMessage(buffer);
+                PlayerWins = true;
+                // mode = ModState::ToggleNoDamage();
+                // sprintf_s(buffer, "No damage mode: %s", mode ? "enabled" : "disabled");
+                // ModState::AddModMessage(buffer);
                 break;
 
             case WM_USER + 3:
