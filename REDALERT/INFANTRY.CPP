@@ -654,7 +654,7 @@ void InfantryClass::Per_Cell_Process(PCPType why)
 							iscapturable = tech->Can_Capture();
 						}
 #ifdef FIXIT_ENGINEER	//	checked - ajw 9/28/98
-						if (tech->Health_Ratio() <= EngineerCaptureLevel && iscapturable) {
+						if (tech->Health_Ratio() <= Rule.ConditionGreen && iscapturable) {
 #else
 						if (tech->Health_Ratio() <= Rule.ConditionRed && iscapturable) {
 #endif
@@ -2929,7 +2929,7 @@ ActionType InfantryClass::What_Action(ObjectClass const * object) const
 
 				if (bldg->Can_Capture()) {
 #ifdef FIXIT_ENGINEER	//	checked - ajw 9/28/98
-					if (bldg->Health_Ratio() <= EngineerCaptureLevel) {
+					if (bldg->Health_Ratio() <= Rule.ConditionGreen) {
 #else
 					if (bldg->Health_Ratio() <= Rule.ConditionRed) {
 #endif
