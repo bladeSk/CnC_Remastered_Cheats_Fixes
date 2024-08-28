@@ -50,7 +50,7 @@ const BooleanSetting<SettingInfo>* ModState::s_booleanSettings[] =
     &ModState::s_isUnlimitedAmmo,
 };
 
-DWordSetting<SettingInfo> ModState::s_harvesterBoost("HarvesterBoost", { "Harvester boost" }, 100);
+DWordSetting<SettingInfo> ModState::s_harvesterBoost("HarvesterBoost", { "Harvester boost" }, 10);
 DWordSetting<SettingInfo> ModState::s_movementBoost("MovementBoost", { "Movement boost" }, 10);
 
 DWordSetting<SettingInfo> ModState::s_tiberiumGrowthMultiplier("TiberiumGrowthMultiplier", { "Tiberium growth multiplier" }, 1);
