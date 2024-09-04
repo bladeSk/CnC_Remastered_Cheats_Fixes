@@ -5519,6 +5519,21 @@ bool BuildingClass::Passes_Proximity_Check(CELL homecell)
 			if (base && base->House->Class->House == House->Class->House) {
 				return(true);
 			}
+
+			// mod: Red Alert-like building placement with a gap
+			for (FacingType facing2 = FACING_N; facing2 < FACING_COUNT; facing2++) {
+				CELL	newcell2 = Adjacent_Cell(newcell, facing2);
+
+				BuildingClass* base2 = Map[newcell2].Cell_Building();
+
+				if (Map[newcell2].Owner == House->Class->House) {
+					return(true);
+				}
+
+				if (base2 && base2->House->Class->House == House->Class->House) {
+					return(true);
+				}
+			}
 		}
 	}
 	return(false);

@@ -4473,6 +4473,14 @@ void DLLExportClass::Calculate_Placement_Distances(BuildingTypeClass* placement_
                     CELL adjcell = Adjacent_Cell(cell, facing);
                     if (Map.In_Radar(adjcell)) {
                         placement_distance[adjcell] = min(placement_distance[adjcell], 1U);
+
+                        // mod: Red Alert-like building placement with a gap
+                        for (FacingType facing2 = FACING_N; facing2 < FACING_COUNT; facing2++) {
+                            CELL adjcell2 = Adjacent_Cell(adjcell, facing2);
+                            if (Map.In_Radar(adjcell2)) {
+                                placement_distance[adjcell2] = min(placement_distance[adjcell2], 1U);
+                            }
+                        }
                     }
                 }
             }
